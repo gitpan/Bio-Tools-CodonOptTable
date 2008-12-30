@@ -1,6 +1,5 @@
 package Bio::Tools::CodonOptTable;
 
-use warnings;
 use strict;
 use Data::Dumper;
 
@@ -11,6 +10,7 @@ use Bio::SeqIO;
 use Bio::Tools::SeqStats;
 use Bio::Tools::CodonTable;
 use Bio::DB::GenBank;
+use GD::Graph::bars;
 
 =head1 NAME
 
@@ -22,7 +22,7 @@ Version 0.01
 
 =cut
 
-our $VERSION = '0.01';
+our $VERSION = '0.02';
 
 use vars qw(@ISA %Amnioacid);
 
@@ -64,7 +64,7 @@ my %Amnioacid = (
 
 We produces each codon frequency,
 	    Relative Synonymous Codons Uses and
-	    Relative Adaptiveness of a Codon
+	    Relative Adaptiveness of a Codon table and bar graph
 
 that will help you to calculate the Codon Adaptation Index (CAI) of a gene, to see the gene expression level.
 
@@ -80,10 +80,12 @@ Perhaps a little code snippet.
 				   );
 
     #If you wanna read from file
+    
     my $seqobj = Bio::Tools::CodonOptTable->new(-file => "contig.fasta",
                                              -format => 'Fasta');
     
     #If you have Accession number and want to get file from NCBI
+    
     my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522");
     
     my $myCodons = $seqobj->rscu_rac_table();
@@ -92,18 +94,26 @@ Perhaps a little code snippet.
 	{
 	    for my $a (@$myCodons)
 		    {
-		       print "Codon 	: ",$a->{'codon'},"\t";
-		       print "Frequency : ",$a->{'frequency'},"\t";
-		       print "AminoAcid : ",$a->{'aa_name'},"\t";
-		       print "RSCU	: ",$a->{'rscu'},"\t"; #Relative Synonymous Codons Uses
-		       print "RAC	: ",$a->{'rac'},"\t"; #Relative Adaptiveness of a Codon
-		       print "\n";
+			print "Codon      : ",$each_aa->[1]->{'codon'},"\t";
+			print "Frequency  : ",$each_aa->[1]->{'frequency'},"\t";
+			print "AminoAcid  : ",$each_aa->[1]->{'aa_name'},"\t";
+			print "RSCU Value : ",$each_aa->[1]->{'rscu'},"\t"; #Relative Synonymous Codons Uses
+			print "RAC Value  : ",$each_aa->[1]->{'rac'},"\t"; #Relative Adaptiveness of a Codon
+			print "\n";
 		    }
 	}
+    
+    # to produce a graph between RSCU & RAC
+    # Graph output file extension should be GIF, we support GIF only
+    
+    $seqobj->generate_graph($myCodons,"myoutput.gif");
+    
     ...
     
 =head1 METHODS
+
     Title   : new
+    
     Usage1   : $seq    = Bio::Tools::CodonOptTable->new( -seq => 'ATGGGGGTGGTGGTACCCT',
 					      -id  => 'human_id',
 					      -accession_number => 'AL000012',
@@ -136,6 +146,7 @@ Perhaps a little code snippet.
 	      IF you are fetching file form NCBI it will call _read_remotefile method
 
 =head2 METHODS
+    
     Title   : calculate_rscu
 					      
     Function: Calculate the RSCU(Relative Synonymous Codons Uses).
@@ -144,12 +155,19 @@ Perhaps a little code snippet.
 	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
 
 =head2 METHODS
+    
     Title   : calculate_rac
 					      
     Function: Calculate the RAC(Relative Adaptiveness of a Codon).
 	    	      
     Note    : The formula is used in the following references.
 	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
+
+=head3 METHODS
+    
+    Title   : generate_graph
+					      
+    Function: Produce a bar graph between RAC(Relative Adaptiveness of a Codon) & RSCU(Relative Synonymous Codons Uses).
 
 =cut
 
@@ -236,7 +254,10 @@ sub rscu_rac_table
     
     my $rscu_rac = map_codon_iupac($codons);
     
-    return $rscu_rac;
+    my @sorted_codons_by_aa = sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] || $a->[2] cmp $b->[2] || $a->[3] cmp $b->[3] ||$a->[4] cmp $b->[4] }
+        map { [$_->{aa_name}, $_] } @$rscu_rac;
+    
+    return \@sorted_codons_by_aa;
 }
 
 sub map_codon_iupac
@@ -282,9 +303,9 @@ sub calculate_rscu
 	{
 	    foreach my $goforall (@$codons)
 	    {
-		if(defined $amino && $goforall->{'aa_name'} eq $amino)
+		if( $amino && ($goforall->{'aa_name'} eq $amino))
 		{
-		    $all_freq_aa+= $goforall->{'frequency'};
+		    $all_freq_aa += $goforall->{'frequency'};
 		    $count++;
 		}
 	    }	    
@@ -330,9 +351,63 @@ sub calculate_rac
     }
     # A CAI of 1.0 is considered to be perfect in the desired expression organism, and a
     # CAI of >0.9 is regarded as very good, in terms of high gene expression level.
-    return \@myCodons;
+    return (\@myCodons);
 }
 
+sub generate_graph
+{
+    my($self,$codons,$output) =@_;
+
+    my (@x_axis_labels,@rscu,@rac,@x_axis_values,@codons_table,@codon_freq);
+    my $y_axis_max 		= 5;
+    my @category_colours 	= qw(red dgreen);
+    my $bar_graph 		= new GD::Graph::bars(1000,500);
+    
+    foreach my $each_aa (@$codons) 
+	{
+	    if($each_aa->[1]->{'aa_name'})
+	    {
+		push(@codons_table,$each_aa->[1]->{'aa_name'}."(".$each_aa->[1]->{'codon'}.")");
+		push(@codon_freq,$each_aa->[1]->{'frequency'});
+		push(@x_axis_labels,$each_aa->[1]->{'codon'}."(".$each_aa->[1]->{'frequency'}.")"."-".$each_aa->[1]->{'aa_name'});
+		push(@rscu,$each_aa->[1]->{'rscu'});
+		push(@rac,$each_aa->[1]->{'rac'});
+	    }
+	}
+    
+    my @bar_graph_table;
+    push(@bar_graph_table, \@x_axis_labels);
+    push(@bar_graph_table, \@rscu);
+    push(@bar_graph_table, \@rac);
+    
+    $bar_graph->set(
+	title => 'Graph Representing : Relative Synonymous Codons Uses and Relative Adaptiveness of a Codon for '.$self->display_id,
+	y_label => 'RSCU and RAC values', #y-axis label
+	y_max_value => $y_axis_max, #the max value of the y-axis
+	y_min_value => 0,    #the min value of y-axis, note set below 0 if negative values are required
+	y_tick_number => 20, #y-axis scale increment
+	y_label_skip => 1,   #label every other y-axis marker
+	box_axis => 0,       #do not draw border around graph
+	line_width => 2,     #width of lines
+	legend_spacing => 5, #spacing between legend elements
+	legend_placement =>'RC', #put legend to the centre right of chart
+	dclrs => \@category_colours, #reference to array of category colours for each line
+	bgclr => 'red',
+	long_ticks => 0,
+	tick_length => 3,
+	x_labels_vertical => 1,
+    ) || die "\nFailed to create line graph: $bar_graph->error()";
+        
+    $bar_graph->set_legend('RSCU Value', 'RAC Value');
+    
+    my $plot 	= $bar_graph->plot(\@bar_graph_table);
+    
+    my $line_file = $output;
+    open(IMG, ">$line_file") || die ("\nFailed to save graph to file: $line_file. $!");
+    binmode(IMG);
+    print IMG $plot->gif();
+    close(IMG);
+}
 =head1 AUTHOR
 
 Rakesh Kumar Shardiwal, C<< <rakesh.shardiwal at gmail.com> >>
@@ -376,6 +451,8 @@ L<http://search.cpan.org/dist/Bio-Tools-CodonOptTable/>
 
 =head1 ACKNOWLEDGEMENTS
 
+Lalchand Kumawat <lalchand82@gmail.com>
+Rajneesh Kumar Sharma <biorajneesh@gmail.com>
 
 =head1 COPYRIGHT & LICENSE
 

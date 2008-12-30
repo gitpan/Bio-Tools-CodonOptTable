@@ -6,6 +6,8 @@ The simplest way of depiction is to plot the codon usage frequency that can be f
 
 We produces each codon frequency, Relative Synonymous Codons Uses and Relative Adaptiveness of a Codon that can help to calculate the Codon Adaptation Index (CAI) of a gene.
 
+We generate a Graph between RSCU & RAC for better analysis.
+
 Reference:
 http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
 
@@ -43,16 +45,18 @@ my $myCodons = $seqobj->rscu_rac_table();
 
 if($myCodons)
     {
-        for my $a (@$myCodons)
-                {
-                   print "Codon : ",$a->{'codon'},"\t";
-                   print "Frequency : ",$a->{'frequency'},"\t";
-                   print "AA : ",$a->{'aa_name'},"\t";
-                   print "RSCU: ",$a->{'rscu'},"\t";
-                   print "RAC: ",$a->{'rac'},"\t";
-                   print "\n";
-                }
+        for my $each_aa (@$myCodons)
+	{
+	    print "Codon      : ",$each_aa->[1]->{'codon'},"\t";
+	    print "Frequency  : ",$each_aa->[1]->{'frequency'},"\t";
+	    print "AminoAcid  : ",$each_aa->[1]->{'aa_name'},"\t";
+	    print "RSCU Value : ",$each_aa->[1]->{'rscu'},"\t"; #Relative Synonymous Codons Uses
+	    print "RAC Value  : ",$each_aa->[1]->{'rac'},"\t"; #Relative Adaptiveness of a Codon
+	    print "\n";
+	}
     }
+# to generate a Graph between RSCU & RAC
+$seqobj->generate_graph($myCodons,"myoutput.gif");
 
 
 SUPPORT AND DOCUMENTATION
