@@ -18,11 +18,11 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons quality
 
 =head1 VERSION
 
-Version 0.01
+Version 0.03
 
 =cut
 
-our $VERSION = '0.02';
+our $VERSION = '0.03';
 
 use vars qw(@ISA %Amnioacid);
 
@@ -60,7 +60,8 @@ my %Amnioacid = (
         'X'=>'Xaa'
     );
 
-=head1 SYNOPSIS
+
+=head1 DESCRIPTION
 
 We produces each codon frequency,
 	    Relative Synonymous Codons Uses and
@@ -68,7 +69,9 @@ We produces each codon frequency,
 
 that will help you to calculate the Codon Adaptation Index (CAI) of a gene, to see the gene expression level.
 
-Perhaps a little code snippet.
+=cut
+
+=head1 SYNOPSIS
 
     use Bio::Tools::CodonOptTable;
 
@@ -92,7 +95,7 @@ Perhaps a little code snippet.
     
     if($myCodons)
 	{
-	    for my $a (@$myCodons)
+	    for my $each_aa (@$myCodons)
 		    {
 			print "Codon      : ",$each_aa->[1]->{'codon'},"\t";
 			print "Frequency  : ",$each_aa->[1]->{'frequency'},"\t";
@@ -110,7 +113,7 @@ Perhaps a little code snippet.
     
     ...
     
-=head1 METHODS
+=head2 METHODS
 
     Title   : new
     
@@ -451,7 +454,7 @@ L<http://search.cpan.org/dist/Bio-Tools-CodonOptTable/>
 
 =head1 ACKNOWLEDGEMENTS
 
-Lalchand Kumawat <lalchand82@gmail.com>
+Lalchand Kumawat <lalchand82@gmail.com> 
 Rajneesh Kumar Sharma <biorajneesh@gmail.com>
 
 =head1 COPYRIGHT & LICENSE
@@ -465,3 +468,4 @@ under the same terms as Perl itself.
 =cut
 
 1; # End of Bio::Tools::CodonOptTable
+__END__
