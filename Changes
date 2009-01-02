@@ -6,4 +6,6 @@ Revision history for Bio-Tools-CodonOptTable
         Second version, Added graphical view for RSCU and RAC.
 0.03	30th Dec 08
 	Third version, Typo correction
+0.04	1st Jan 09
+	Test correction, pod-coverage
 

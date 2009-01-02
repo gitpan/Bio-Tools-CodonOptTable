@@ -31,15 +31,20 @@ my $seqobj = Bio::Tools::CodonOptTable->new ( -seq => 'ATGGGGTGGGCACCATGCTGCTGTC
 				   -id  => 'GeneFragment-12',
 				   -accession_number => 'MYSEQ1',
 				   -alphabet => 'dna',
-				   -is_circular => 1
+				   -is_circular => 1,
+                                   -genetic_code => 1,
 				   );
 
 #IF you have sequence in file you can use this method
 my $seqobj = Bio::Tools::CodonsUses->new(-file => "contig.fasta",
-                                         -format => 'Fasta');
+                                         -format => 'Fasta',
+					 -genetic_code => 1,
+					);
 
 #If you have NCBI accession number and what file from NCBI use this
-my $seqobj = Bio::Tools::CodonsUses->new(-ncbi_id => "J00522");
+my $seqobj = Bio::Tools::CodonsUses->new(-ncbi_id => "J00522",
+					 -genetic_code => 1,
+					);
 
 my $myCodons = $seqobj->rscu_rac_table();
 

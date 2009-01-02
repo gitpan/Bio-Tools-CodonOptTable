@@ -5,7 +5,9 @@ use Data::Dumper;
 
 #read from file
 my $seqobj = Bio::Tools::CodonOptTable->new(-file => "contig.fasta",
-                                         -format => 'Fasta');
+                                         -format => 'Fasta',
+					 -genetic_code => 1,
+					);
 
 my $myCodons = $seqobj->rscu_rac_table();
 if($myCodons)

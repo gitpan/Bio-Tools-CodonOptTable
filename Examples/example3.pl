@@ -4,7 +4,9 @@ use Bio::Tools::CodonOptTable;
 use Data::Dumper;
 
 #get from NCBI
-my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522");
+my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522",
+					    -genetic_code => 1,
+					   );
 
 my $myCodons = $seqobj->rscu_rac_table();
 if($myCodons)

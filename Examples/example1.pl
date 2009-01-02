@@ -7,7 +7,8 @@ my $seqobj = Bio::Tools::CodonOptTable->new ( -seq => 'ATGGGGTGGGCACCATGCTGCTGTC
 				   -id  => 'GeneFragment-12',
 				   -accession_number => 'X78121',
 				   -alphabet => 'dna',
-				   -is_circular => 1
+				   -is_circular => 1,
+				   -genetic_code => 1,
 				   );
 
 my $myCodons = $seqobj->rscu_rac_table();

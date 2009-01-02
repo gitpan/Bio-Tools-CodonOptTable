@@ -12,17 +12,19 @@ use Bio::Tools::CodonTable;
 use Bio::DB::GenBank;
 use GD::Graph::bars;
 
+=pod
+
 =head1 NAME
 
-Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage.
+Bio::Tools::CodonOptTable - A more elaborative way to check the codons quality
 
 =head1 VERSION
 
-Version 0.04
+Version 0.03
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.03';
 
 use vars qw(@ISA %Amnioacid);
 
@@ -63,21 +65,11 @@ my %Amnioacid = (
 
 =head1 DESCRIPTION
 
-The purpose of this module is to show codon usage.
-
 We produces each codon frequency,
 	    Relative Synonymous Codons Uses and
 	    Relative Adaptiveness of a Codon table and bar graph
+
 that will help you to calculate the Codon Adaptation Index (CAI) of a gene, to see the gene expression level.
-
-Relative Synonymous Codons Uses(RSCU) values are the number of times a particular codon is observed, relative to the number of times
-that the codon would be observed in the absence of any codon usage bias.
-
-In the absence of any codon usage bias, the RSCU value would be 1.00.
-A codon that is used less frequently than expected will have a value of less than 1.00 and vice versa for a codon that is used more frequently than expected.
-
-Genetics Code: NCBI takes great care to ensure that the translation for each coding sequence (CDS) present in GenBank records is correct. Central to this effort is careful checking on the taxonomy of each record and assignment of the correct genetic code (shown as a /transl_table qualifier on the CDS in the flat files) for each organism and record. This page summarizes and references this work.
-http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
 
 =cut
 
@@ -86,23 +78,21 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     use Bio::Tools::CodonOptTable;
 
     my $seqobj = Bio::Tools::CodonOptTable->new ( -seq => 'ATGGGGTGGGCACCATGCTGCTGTCGTGAATTTGGGCACGATGGTGTACGTGCTCGTAGCTAGGGTGGGTGGTTTG',
-                                                -id  => 'GeneFragment-12',
-                                                -accession_number => 'Myseq1',
-                                                -alphabet => 'dna',
-                                                -is_circular => 1,
-                                                -genetic_code => 1,
+				   -id  => 'GeneFragment-12',
+				   -accession_number => 'Myseq1',
+				   -alphabet => 'dna',
+				   -is_circular => 1
 				   );
 
     #If you wanna read from file
+    
     my $seqobj = Bio::Tools::CodonOptTable->new(-file => "contig.fasta",
-                                             -format => 'Fasta',
-                                             -genetic_code => 1,
-                                             );
-
+                                             -format => 'Fasta');
+    
     #If you have Accession number and want to get file from NCBI
-    my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522",
-                                                -genetic_code => 1,);
-
+    
+    my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522");
+    
     my $myCodons = $seqobj->rscu_rac_table();
     
     if($myCodons)
@@ -124,28 +114,21 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     $seqobj->generate_graph($myCodons,"myoutput.gif");
     
     ...
-=cut
-
+    
 =head1 METHODS
-
-=head2 Constructor
 
     Title   : new
     
     Usage1   : $seq    = Bio::Tools::CodonOptTable->new( -seq => 'ATGGGGGTGGTGGTACCCT',
-                                                        -id  => 'human_id',
-                                                        -accession_number => 'AL000012',
-                                                        -genetic_code => 1,
+					      -id  => 'human_id',
+					      -accession_number => 'AL000012',
 					      );
 					      
     Usage2   : $seq    = Bio::Tools::CodonOptTable->new( -file => 'myseq.fasta',
-                                                        -format => 'fasta',
-                                                        -genetic_code => 1,
+					      -format => 'fasta',
 					      );
 					      
-    Usage3   : $seq    = Bio::Tools::CodonOptTable->new( -ncbi_id => 'J00522',
-                                                        -genetic_code => 1,
-                                                    );
+    Usage3   : $seq    = Bio::Tools::CodonOptTable->new( -ncbi_id => 'J00522');
 					      
     Function: Returns a new primary seq object from
 	      basic constructors, being a string for the sequence
@@ -153,24 +136,21 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
 	    
     Returns : a new Bio::PrimarySeq object
     
-    Args    :   -seq         	    => sequence string
-                -display_id  	    => display id of the sequence (locus name) 
-                -accession_number   => accession number
-                -primary_id  	    => primary id (Genbank id)
-                -desc        	    => description text
-                -alphabet    	    => molecule type (dna,rna,protein)
-                -id          	    => alias for display id
-                -file               => file location
-                -format             => file format
-                -ncbi_id            => NCBI accession number
-                -genetic_code       => 1 (Default)
-                                       # See this list to know more about genetic_code
-                                       # http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+    Args    : -seq         	=> sequence string
+	      -display_id  	=> display id of the sequence (locus name) 
+	      -accession_number => accession number
+	      -primary_id  	=> primary id (Genbank id)
+	      -desc        	=> description text
+	      -alphabet    	=> molecule type (dna,rna,protein)
+	      -id          	=> alias for display id
+	      -file		=> file location
+	      -format		=> file format
+	      -ncbi_id		=> NCBI accession number
 	      
     Note    : IF you are reading sequence from file it will call _read_localfile method
-              IF you are fetching file form NCBI it will call _read_remotefile method
+	      IF you are fetching file form NCBI it will call _read_remotefile method
 
-=head2 Calculate RSCU
+=head2 METHODS
     
     Title   : calculate_rscu
 					      
@@ -179,7 +159,7 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     Note    : The formula is used in the following references.
 	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
 
-=head2 Calculate RAC
+=head2 METHODS
     
     Title   : calculate_rac
 					      
@@ -188,7 +168,7 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     Note    : The formula is used in the following references.
 	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
 
-=head2 Produce RSCU & RAC Graph
+=head3 METHODS
     
     Title   : generate_graph
 					      
@@ -196,14 +176,13 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
 
 =cut
 
-
 sub new {
     my($class,@args) = @_;
     
     my $self = $class->SUPER::new(@args);
     my $seqobj;
     
-    my($seq,$id,$acc,$pid,$desc,$alphabet,$given_id,$is_circular,$file,$format,$ncbi_id,$genetic_code) =
+    my($seq,$id,$acc,$pid,$desc,$alphabet,$given_id,$is_circular,$file,$format,$ncbi_id) =
 	$self->_rearrange([qw(
                             SEQ
                             DISPLAY_ID
@@ -216,7 +195,6 @@ sub new {
                             FILE
                             FORMAT
                             NCBI_ID
-                            GENETIC_CODE
                     )],@args);
     
     if($file && $format)
@@ -246,7 +224,7 @@ sub _read_remotefile
     my($seq,$id,$desc,$alphabet);
     
     my $retrivefile = new Bio::DB::GenBank(-retrievaltype => 'tempfile' , 
-                                           -format => 'Fasta');
+                                           -format => 'Fasta');;
     
     my $fetchedfile = $retrivefile->get_Stream_by_acc($ncbi_id);
     my $seq_data    =  $fetchedfile->next_seq;
@@ -265,8 +243,7 @@ sub _read_localfile
     
     my($seq,$id,$alphabet);
     
-    my $inputstream = Bio::SeqIO->new(-file => $file,
-                                      -format => $format);
+    my $inputstream = Bio::SeqIO->new(-file => $file,-format => $format);
     my $input       = $inputstream->next_seq();
     
     $seq        = $input->seq();
@@ -285,44 +262,31 @@ sub rscu_rac_table
     
     my $rscu_rac = map_codon_iupac($codons);
     
-    my @sorted_codons_by_aa = sort {
-            $a->[0] cmp $b->[0] ||
-            $a->[1] cmp $b->[1] ||
-            $a->[2] cmp $b->[2] ||
-            $a->[3] cmp $b->[3] ||
-            $a->[4] cmp $b->[4] }
-            map { [
-                   $_->{aa_name}, $_
-                ] } @$rscu_rac;
+    my @sorted_codons_by_aa = sort { $a->[0] cmp $b->[0] || $a->[1] cmp $b->[1] || $a->[2] cmp $b->[2] || $a->[3] cmp $b->[3] ||$a->[4] cmp $b->[4] }
+        map { [$_->{aa_name}, $_] } @$rscu_rac;
     
     return \@sorted_codons_by_aa;
 }
 
 sub map_codon_iupac
 {
-    my ($codons,$genetics_code) = @_;
+    my $codons = $_[0];
     
     my $myCodonTable   = Bio::Tools::CodonTable->new();
-    
-    # change codon table if require
-    if(!$genetics_code) { $genetics_code = 1; }
-    $myCodonTable->id($genetics_code);
     
     my (@myCodons, @maxfreq_in_aa);
     my %frequency_table_aa;
 
     foreach my $single_codon (keys %$codons)
     {
-        my $aa_name_abri    = $myCodonTable->translate($single_codon); 
-        my $aa_name         = $Amnioacid{$aa_name_abri};
+        my $aa_name_abri = $myCodonTable->translate($single_codon); 
+        my $aa_name = $Amnioacid{$aa_name_abri};
         push @myCodons, {
-            'codon'         => $single_codon,
-            'frequency'     => $codons->{$single_codon},
-            'aa_name'       => $aa_name,
+            'codon' => $single_codon,
+            'frequency'   => $codons->{$single_codon},
+            'aa_name'    => $aa_name,
         };
-        if(!defined($frequency_table_aa{$aa_name}) ||
-          ($frequency_table_aa{$aa_name} < $codons->{$single_codon})
-          )
+        if(!defined($frequency_table_aa{$aa_name}) || ($frequency_table_aa{$aa_name} < $codons->{$single_codon}))
         {
             $frequency_table_aa{$aa_name} = $codons->{$single_codon};
         }
@@ -339,9 +303,9 @@ sub calculate_rscu
     
     foreach my $each_codon (@$codons)
     {
-        my $amino       = $each_codon->{'aa_name'};
-        my $freq        = $each_codon->{'frequency'};
-        my $count       = 0;
+        my $amino = $each_codon->{'aa_name'};
+        my $freq  = $each_codon->{'frequency'};
+        my $count = 0;
         my $all_freq_aa = 0;
         if($amino)
         {
@@ -360,12 +324,12 @@ sub calculate_rscu
             $rscu_max_table{$amino} = $rscu;
         }
         push @myCodons, {
-            'codon'         => $each_codon->{'codon'},
-            'frequency'     => $freq,
-            'aa_name'       => $amino,
-            'rscu'	        => $rscu,
+            'codon' => $each_codon->{'codon'},
+            'frequency'   => $freq,
+            'aa_name'    => $amino,
+            'rscu'	=> $rscu,
             'total_aa_comb' => $count,
-            'all_fre_aa'    => $all_freq_aa,
+            'all_fre_aa' => $all_freq_aa,
         };
     }
     &calculate_rac(\@myCodons,\%rscu_max_table)
@@ -386,8 +350,8 @@ sub calculate_rac
             $rac = $rscu/$max;
             push @myCodons, {
             'codon' 	=> $each_codon->{'codon'},
-            'frequency' => $each_codon->{'frequency'},
-            'aa_name'   => $amino,
+            'frequency'   	=> $each_codon->{'frequency'},
+            'aa_name'    	=> $amino,
             'rscu'		=> $rscu,
             'rac' 		=> $rac,
             };
@@ -400,12 +364,12 @@ sub calculate_rac
 
 sub generate_graph
 {
-    my($self,$codons,$output_file) =@_;
+    my($self,$codons,$output) =@_;
 
     my (@x_axis_labels,@rscu,@rac,@x_axis_values,@codons_table,@codon_freq);
-    my $y_axis_max 		    = 5;
+    my $y_axis_max 		= 5;
     my @category_colours 	= qw(red dgreen);
-    my $bar_graph 		    = new GD::Graph::bars(1000,500);
+    my $bar_graph 		= new GD::Graph::bars(1000,500);
     
     foreach my $each_aa (@$codons) 
 	{
@@ -426,16 +390,16 @@ sub generate_graph
     
     $bar_graph->set(
         title               => 'Graph Representing : Relative Synonymous Codons Uses and Relative Adaptiveness of a Codon for '.$self->display_id,
-        y_label             => 'RSCU and RAC values',   #y-axis label
-        y_max_value         => $y_axis_max,             #the max value of the y-axis
-        y_min_value         => 0,                       #the min value of y-axis, note set below 0 if negative values are required
-        y_tick_number       => 20,                      #y-axis scale increment
-        y_label_skip        => 1,                       #label every other y-axis marker
-        box_axis            => 0,                       #do not draw border around graph
-        line_width          => 2,                       #width of lines
-        legend_spacing      => 5,                       #spacing between legend elements
-        legend_placement    =>'RC',                     #put legend to the centre right of chart
-        dclrs               => \@category_colours,      #reference to array of category colours for each line
+        y_label             => 'RSCU and RAC values', #y-axis label
+        y_max_value         => $y_axis_max, #the max value of the y-axis
+        y_min_value         => 0,    #the min value of y-axis, note set below 0 if negative values are required
+        y_tick_number       => 20, #y-axis scale increment
+        y_label_skip        => 1,   #label every other y-axis marker
+        box_axis            => 0,       #do not draw border around graph
+        line_width          => 2,     #width of lines
+        legend_spacing      => 5, #spacing between legend elements
+        legend_placement    =>'RC', #put legend to the centre right of chart
+        dclrs               => \@category_colours, #reference to array of category colours for each line
         bgclr               => 'red',
         long_ticks          => 0,
         tick_length         => 3,
@@ -446,11 +410,11 @@ sub generate_graph
     
     my $plot 	= $bar_graph->plot(\@bar_graph_table);
     
-    my $line_file = $output_file;
-    open(GPH, ">$line_file") || die ("\nFailed to save graph to file: $line_file. $!");
-    binmode(GPH);
-    print GPH $plot->gif();
-    close(GPH);
+    my $line_file = $output;
+    open(IMG, ">$line_file") || die ("\nFailed to save graph to file: $line_file. $!");
+    binmode(IMG);
+    print IMG $plot->gif();
+    close(IMG);
 }
 
 =head1 AUTHOR
@@ -510,5 +474,4 @@ under the same terms as Perl itself.
 =cut
 
 1; # End of Bio::Tools::CodonOptTable
-
 __END__
