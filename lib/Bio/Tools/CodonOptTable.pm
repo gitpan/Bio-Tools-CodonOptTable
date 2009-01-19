@@ -18,11 +18,11 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage.
 
 =head1 VERSION
 
-Version 0.04
+Version 0.06
 
 =cut
 
-our $VERSION = '0.04';
+our $VERSION = '0.06';
 
 use vars qw(@ISA %Amnioacid);
 
@@ -32,6 +32,8 @@ use base qw(Exporter);
 our @EXPORT = qw(
         		    new
                     rscu_rac_table
+                    prefered_codon
+                    generate_graph
 		);
 
 my %Amnioacid = (
@@ -93,13 +95,13 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
                                                 -genetic_code => 1,
 				   );
 
-    #If you wanna read from file
+    B<#If you wanna read from file>
     my $seqobj = Bio::Tools::CodonOptTable->new(-file => "contig.fasta",
                                              -format => 'Fasta',
                                              -genetic_code => 1,
                                              );
 
-    #If you have Accession number and want to get file from NCBI
+    B<#If you have Accession number and want to get file from NCBI>
     my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522",
                                                 -genetic_code => 1,);
 
@@ -108,17 +110,24 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     if($myCodons)
 	{
 	    for my $each_aa (@$myCodons)
-		    {
-			print "Codon      : ",$each_aa->[1]->{'codon'},"\t";
-			print "Frequency  : ",$each_aa->[1]->{'frequency'},"\t";
-			print "AminoAcid  : ",$each_aa->[1]->{'aa_name'},"\t";
-			print "RSCU Value : ",$each_aa->[1]->{'rscu'},"\t"; #Relative Synonymous Codons Uses
-			print "RAC Value  : ",$each_aa->[1]->{'rac'},"\t"; #Relative Adaptiveness of a Codon
-			print "\n";
-		    }
+        {
+        print "Codon      : ",$each_aa->{'codon'},"\t";
+        print "Frequency  : ",$each_aa->{'frequency'},"\t";
+        print "AminoAcid  : ",$each_aa->{'aa_name'},"\t";
+        print "RSCU Value : ",$each_aa->{'rscu'},"\t"; #Relative Synonymous Codons Uses
+        print "RAC Value  : ",$each_aa->{'rac'},"\t"; #Relative Adaptiveness of a Codon
+        print "\n";
+        }
 	}
     
-    # to produce a graph between RSCU & RAC
+    B<# To get the prefered codon list based on RSCU & RAC Values >
+    my $prefered_codons = $seqobj->prefered_codon($myCodons);
+
+    while ( my ($amino_acid, $codon) = each(%$prefered_codons) ) {
+        print "AminoAcid : $amino_acid \t Codon : $codon\n";
+    }
+    
+    B<# To produce a graph between RSCU & RAC>
     # Graph output file extension should be GIF, we support GIF only
     
     $seqobj->generate_graph($myCodons,"myoutput.gif");
@@ -188,6 +197,12 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     Note    : The formula is used in the following references.
 	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
 
+=head2 Get Prefered Codons based on RAC & RSCU
+    
+    Title   : prefered_codon
+					      
+    Function: Give you prefered codons list.
+
 =head2 Produce RSCU & RAC Graph
     
     Title   : generate_graph
@@ -197,6 +212,9 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
 =cut
 
 
+=pod
+    Constructor
+=cut
 sub new {
     my($class,@args) = @_;
     
@@ -239,6 +257,9 @@ sub new {
     return bless $seqobj, $class;
 }
 
+=pod
+    Function to read remote file
+=cut
 sub _read_remotefile
 {
     my $ncbi_id = $_[0];
@@ -258,7 +279,9 @@ sub _read_remotefile
     
     return($seq,$id,$desc,$alphabet);
 }
-
+=pod
+    Function to read local file
+=cut
 sub _read_localfile
 {
     my ($file,$format) = @_;
@@ -275,29 +298,25 @@ sub _read_localfile
     
     return($seq,$id,$alphabet);
 }
-
+=pod
+    Function to produce rscu and rac table
+=cut
 sub rscu_rac_table
 {
-    my $seqobj = $_[0];
+    my ($seqobj) = @_;
     
     my $seq_stats  =  Bio::Tools::SeqStats->new(-seq=>$seqobj);
     my $codons = $seq_stats-> count_codons();
     
     my $rscu_rac = map_codon_iupac($codons);
     
-    my @sorted_codons_by_aa = sort {
-            $a->[0] cmp $b->[0] ||
-            $a->[1] cmp $b->[1] ||
-            $a->[2] cmp $b->[2] ||
-            $a->[3] cmp $b->[3] ||
-            $a->[4] cmp $b->[4] }
-            map { [
-                   $_->{aa_name}, $_
-                ] } @$rscu_rac;
+    my @sorted_codons_by_aa = sort { $a->{aa_name} cmp $b->{aa_name} } @$rscu_rac;
     
     return \@sorted_codons_by_aa;
 }
-
+=pod
+    Function to map codon and iupac names
+=cut
 sub map_codon_iupac
 {
     my ($codons,$genetics_code) = @_;
@@ -327,9 +346,11 @@ sub map_codon_iupac
             $frequency_table_aa{$aa_name} = $codons->{$single_codon};
         }
     }
-    &calculate_rscu(\@myCodons,\%frequency_table_aa);
+    calculate_rscu(\@myCodons,\%frequency_table_aa);
 }
-
+=pod
+    Function to calculate rscu
+=cut
 sub calculate_rscu
 {
     my($codons,$max_codons) = @_;
@@ -368,9 +389,11 @@ sub calculate_rscu
             'all_fre_aa'    => $all_freq_aa,
         };
     }
-    &calculate_rac(\@myCodons,\%rscu_max_table)
+    calculate_rac(\@myCodons,\%rscu_max_table)
 }
-
+=pod
+    Function to calculate rac value
+=cut
 sub calculate_rac
 {
     my($codons,$max_rscu) = @_;
@@ -388,8 +411,8 @@ sub calculate_rac
             'codon' 	=> $each_codon->{'codon'},
             'frequency' => $each_codon->{'frequency'},
             'aa_name'   => $amino,
-            'rscu'		=> $rscu,
-            'rac' 		=> $rac,
+            'rscu'		=> sprintf("%.5f", $rscu),
+            'rac' 		=> sprintf("%.5f", $rac),
             };
         }
     }
@@ -397,7 +420,30 @@ sub calculate_rac
     # CAI of >0.9 is regarded as very good, in terms of high gene expression level.
     return (\@myCodons);
 }
-
+=pod
+    Function to get prefered codons
+=cut
+sub prefered_codon
+{
+    my($self,$codons) = @_;
+    my $prefered_codon;
+    for my $each_aa (@$codons)
+	{
+		my $aa_name 	= $each_aa->{'aa_name'};
+		my $rscu 		= $each_aa->{'rscu'} ;
+		my $codon 		= $each_aa->{'codon'};
+		my $frequency 	= $each_aa->{'frequency'};
+		
+		if(!defined($prefered_codon->{$aa_name}) || ($prefered_codon->{$aa_name} < $rscu))
+		{
+			$prefered_codon->{$aa_name} = $codon;
+		}
+	}
+    return $prefered_codon;
+}
+=pod
+    Function to generate graph
+=cut
 sub generate_graph
 {
     my($self,$codons,$output_file) =@_;
@@ -409,13 +455,13 @@ sub generate_graph
     
     foreach my $each_aa (@$codons) 
 	{
-	    if($each_aa->[1]->{'aa_name'})
+	    if($each_aa->{'aa_name'})
 	    {
-		push(@codons_table,$each_aa->[1]->{'aa_name'}."(".$each_aa->[1]->{'codon'}.")");
-		push(@codon_freq,$each_aa->[1]->{'frequency'});
-		push(@x_axis_labels,$each_aa->[1]->{'codon'}."(".$each_aa->[1]->{'frequency'}.")"."-".$each_aa->[1]->{'aa_name'});
-		push(@rscu,$each_aa->[1]->{'rscu'});
-		push(@rac,$each_aa->[1]->{'rac'});
+		push(@codons_table,$each_aa->{'aa_name'}."(".$each_aa->{'codon'}.")");
+		push(@codon_freq,$each_aa->{'frequency'});
+		push(@x_axis_labels,$each_aa->{'codon'}."(".$each_aa->{'frequency'}.")"."-".$each_aa->{'aa_name'});
+		push(@rscu,$each_aa->{'rscu'});
+		push(@rac,$each_aa->{'rac'});
 	    }
 	}
     
