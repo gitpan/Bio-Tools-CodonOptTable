@@ -3,7 +3,6 @@ package Bio::Tools::CodonOptTable;
 use strict;
 use Data::Dumper;
 
-use Bio::Root::RootI;
 use Bio::Root::Root;
 use Bio::PrimarySeq;
 use Bio::SeqIO;
@@ -18,23 +17,15 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage.
 
 =head1 VERSION
 
-Version 0.06
+Version 0.07
 
 =cut
 
-our $VERSION = '0.06';
+our $VERSION = '0.07';
 
 use vars qw(@ISA %Amnioacid);
 
 @ISA = ('Bio::Root::Root', 'Bio::SeqIO', 'Bio::PrimarySeq');
-use base qw(Exporter);
-
-our @EXPORT = qw(
-        		    new
-                    rscu_rac_table
-                    prefered_codon
-                    generate_graph
-		);
 
 my %Amnioacid = (
         'A'=>'Ala',
@@ -108,17 +99,17 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     my $myCodons = $seqobj->rscu_rac_table();
     
     if($myCodons)
+    {
+	for my $each_aa (@$myCodons)
 	{
-	    for my $each_aa (@$myCodons)
-        {
-        print "Codon      : ",$each_aa->{'codon'},"\t";
-        print "Frequency  : ",$each_aa->{'frequency'},"\t";
-        print "AminoAcid  : ",$each_aa->{'aa_name'},"\t";
-        print "RSCU Value : ",$each_aa->{'rscu'},"\t"; #Relative Synonymous Codons Uses
-        print "RAC Value  : ",$each_aa->{'rac'},"\t"; #Relative Adaptiveness of a Codon
-        print "\n";
-        }
+	    print "Codon      : ",$each_aa->{'codon'},"\t";
+	    print "Frequency  : ",$each_aa->{'frequency'},"\t";
+	    print "AminoAcid  : ",$each_aa->{'aa_name'},"\t";
+	    print "RSCU Value : ",$each_aa->{'rscu'},"\t"; #Relative Synonymous Codons Uses
+	    print "RAC Value  : ",$each_aa->{'rac'},"\t"; #Relative Adaptiveness of a Codon
+	    print "\n";
 	}
+    }
     
     B<# To get the prefered codon list based on RSCU & RAC Values >
     my $prefered_codons = $seqobj->prefered_codon($myCodons);
@@ -219,33 +210,33 @@ sub new {
     my($class,@args) = @_;
     
     my $self = $class->SUPER::new(@args);
-    my $seqobj;
     
     my($seq,$id,$acc,$pid,$desc,$alphabet,$given_id,$is_circular,$file,$format,$ncbi_id,$genetic_code) =
-	$self->_rearrange([qw(
-                            SEQ
-                            DISPLAY_ID
-                            ACCESSION_NUMBER
-                            PRIMARY_ID
-                            DESC
-                            ALPHABET
-                            ID
-                            IS_CIRCULAR
-                            FILE
-                            FORMAT
-                            NCBI_ID
-                            GENETIC_CODE
-                    )],@args);
+    $self->_rearrange([qw(
+			SEQ
+			DISPLAY_ID
+			ACCESSION_NUMBER
+			PRIMARY_ID
+			DESC
+			ALPHABET
+			ID
+			IS_CIRCULAR
+			FILE
+			FORMAT
+			NCBI_ID
+			GENETIC_CODE
+		)],@args);
     
     if($file && $format)
     {
-        ($seq,$id,$alphabet) = _read_localfile($file,$format);
+        ($seq,$id,$alphabet) = $self->_read_localfile($file,$format);
     }
     if($ncbi_id)
     {
-        ($seq,$id,$desc,$alphabet) = _read_remotefile($ncbi_id);   
+        ($seq,$id,$desc,$alphabet) = $self->_read_remotefile($ncbi_id);   
     }
-    $seqobj = Bio::PrimarySeq->new ( -seq => $seq,
+	
+    $self = Bio::PrimarySeq->new ( -seq => $seq,
                                      -id  => $id,
                                      -accession_number => $acc,
                                      -display_id => $given_id,
@@ -254,15 +245,29 @@ sub new {
                                      -alphabet => $alphabet,
                                      -is_circular => $is_circular
                                    );
-    return bless $seqobj, $class;
+    $self->{'genetic_code'} = $genetic_code;
+    _build_codons($self);
+    _map_codon_iupac($self);
+
+    return bless $self, $class;
 }
 
+sub _build_codons{
+    my $self = shift;
+
+    my $seq_stats  =  Bio::Tools::SeqStats->new(-seq=>$self);
+    $self->{'codons'}   	  = $seq_stats->count_codons();
+    $self->{'monomers_count'} = $seq_stats->count_monomers();
+    $self->{'seq_mol_weight'} = $seq_stats->get_mol_wt();
+
+    return 1;
+}
 =pod
     Function to read remote file
 =cut
 sub _read_remotefile
 {
-    my $ncbi_id = $_[0];
+    my ($self,$ncbi_id) =@_;
     
     my($seq,$id,$desc,$alphabet);
     
@@ -284,7 +289,7 @@ sub _read_remotefile
 =cut
 sub _read_localfile
 {
-    my ($file,$format) = @_;
+    my ($self,$file,$format) = @_;
     
     my($seq,$id,$alphabet);
     
@@ -303,74 +308,67 @@ sub _read_localfile
 =cut
 sub rscu_rac_table
 {
-    my ($seqobj) = @_;
+    my $self = shift;
     
-    my $seq_stats  =  Bio::Tools::SeqStats->new(-seq=>$seqobj);
-    my $codons = $seq_stats-> count_codons();
-    
-    my $rscu_rac = map_codon_iupac($codons);
-    
-    my @sorted_codons_by_aa = sort { $a->{aa_name} cmp $b->{aa_name} } @$rscu_rac;
+    my $codons 			= $self->{'codons'};	
+    my(@codons,$max_rscu) 	= $self->calculate_rscu();
+    my $rscu_rac 		= $self->calculate_rac(@codons,$max_rscu);
+    my @sorted_codons_by_aa 	= sort { $a->{aa_name} cmp $b->{aa_name} } @$rscu_rac;
     
     return \@sorted_codons_by_aa;
 }
 =pod
     Function to map codon and iupac names
 =cut
-sub map_codon_iupac
+sub _map_codon_iupac
 {
-    my ($codons,$genetics_code) = @_;
+    my $self = shift;
     
-    my $myCodonTable   = Bio::Tools::CodonTable->new();
+    my $myCodonTable		= Bio::Tools::CodonTable->new();
+    my $codons 			= $self->{'codons'};
+    $self->{'genetic_code'} 	= 1 if(!$self->{'genetic_code'});
     
-    # change codon table if require
-    if(!$genetics_code) { $genetics_code = 1; }
-    $myCodonTable->id($genetics_code);
+    $myCodonTable->id($self->{'genetic_code'});
     
-    my (@myCodons, @maxfreq_in_aa);
-    my %frequency_table_aa;
+    my $myCodons;
 
     foreach my $single_codon (keys %$codons)
     {
         my $aa_name_abri    = $myCodonTable->translate($single_codon); 
         my $aa_name         = $Amnioacid{$aa_name_abri};
-        push @myCodons, {
-            'codon'         => $single_codon,
+        $myCodons->{$single_codon}={
             'frequency'     => $codons->{$single_codon},
             'aa_name'       => $aa_name,
         };
-        if(!defined($frequency_table_aa{$aa_name}) ||
-          ($frequency_table_aa{$aa_name} < $codons->{$single_codon})
-          )
-        {
-            $frequency_table_aa{$aa_name} = $codons->{$single_codon};
-        }
     }
-    calculate_rscu(\@myCodons,\%frequency_table_aa);
+    $self->{'codons'} = $myCodons;
+    
+    return 1;
 }
 =pod
     Function to calculate rscu
 =cut
 sub calculate_rscu
 {
-    my($codons,$max_codons) = @_;
+    my $self = shift;
     
-    my($freq,$rscu,$rac,@myCodons);
-    my %rscu_max_table;
+    my $codons = $self->{'codons'};
     
-    foreach my $each_codon (@$codons)
+    my($rscu,@myCodons,%rscu_max_table);
+    
+    foreach my $each_codon (keys %$codons)
     {
-        my $amino       = $each_codon->{'aa_name'};
-        my $freq        = $each_codon->{'frequency'};
+		my $amino       = $codons->{$each_codon}->{'aa_name'};
+        my $freq        = $codons->{$each_codon}->{'frequency'};
         my $count       = 0;
         my $all_freq_aa = 0;
         if($amino)
         {
-            foreach my $goforall (@$codons)
+            foreach my $goforall (keys %$codons)
             {
-                if( $amino && ($goforall->{'aa_name'} eq $amino))
+                if( $amino && ($codons->{$goforall}->{'aa_name'} eq $amino))
                 {
-                    $all_freq_aa += $goforall->{'frequency'};
+                    $all_freq_aa += $codons->{$goforall}->{'frequency'};
                     $count++;
                 }
             }	    
@@ -381,23 +379,23 @@ sub calculate_rscu
             $rscu_max_table{$amino} = $rscu;
         }
         push @myCodons, {
-            'codon'         => $each_codon->{'codon'},
-            'frequency'     => $freq,
-            'aa_name'       => $amino,
-            'rscu'	        => $rscu,
-            'total_aa_comb' => $count,
-            'all_fre_aa'    => $all_freq_aa,
+            codon 			=> $each_codon,
+            frequency 		=> $freq,
+            aa_name 		=> $amino,
+            rscu 			=> $rscu,
+            total_aa_comb 	=> $count,
+            all_fre_aa 		=> $all_freq_aa,
         };
     }
-    calculate_rac(\@myCodons,\%rscu_max_table)
+    return (\@myCodons,\%rscu_max_table);
 }
 =pod
     Function to calculate rac value
 =cut
 sub calculate_rac
 {
-    my($codons,$max_rscu) = @_;
-    my($freq,$rac,@myCodons);
+    my($self,$codons,$max_rscu) = @_;
+    my($rac,@myCodons);
     
     foreach my $each_codon (@$codons)
     {
@@ -408,11 +406,11 @@ sub calculate_rac
             my $max = $max_rscu->{$amino};
             $rac = $rscu/$max;
             push @myCodons, {
-            'codon' 	=> $each_codon->{'codon'},
-            'frequency' => $each_codon->{'frequency'},
-            'aa_name'   => $amino,
-            'rscu'		=> sprintf("%.5f", $rscu),
-            'rac' 		=> sprintf("%.5f", $rac),
+		'codon' 	=> $each_codon->{'codon'},
+		'frequency' 	=> $each_codon->{'frequency'},
+		'aa_name' 	=> $amino,
+		'rscu'		=> sprintf("%.5f", $rscu),
+		'rac' 		=> sprintf("%.5f", $rac),
             };
         }
     }
@@ -428,17 +426,17 @@ sub prefered_codon
     my($self,$codons) = @_;
     my $prefered_codon;
     for my $each_aa (@$codons)
+    {
+	my $aa_name 	= $each_aa->{'aa_name'};
+	my $rscu 	= $each_aa->{'rscu'} ;
+	my $codon	= $each_aa->{'codon'};
+	my $frequency 	= $each_aa->{'frequency'};
+	
+	if(!defined($prefered_codon->{$aa_name}) || ($prefered_codon->{$aa_name} < $rscu))
 	{
-		my $aa_name 	= $each_aa->{'aa_name'};
-		my $rscu 		= $each_aa->{'rscu'} ;
-		my $codon 		= $each_aa->{'codon'};
-		my $frequency 	= $each_aa->{'frequency'};
-		
-		if(!defined($prefered_codon->{$aa_name}) || ($prefered_codon->{$aa_name} < $rscu))
-		{
-			$prefered_codon->{$aa_name} = $codon;
-		}
+	    $prefered_codon->{$aa_name} = $codon;
 	}
+    }
     return $prefered_codon;
 }
 =pod
