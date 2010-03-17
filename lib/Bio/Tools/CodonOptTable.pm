@@ -1,8 +1,9 @@
 package Bio::Tools::CodonOptTable;
 
+use warnings;
 use strict;
-use Data::Dumper;
 
+use Data::Dumper;
 use Bio::Root::Root;
 use Bio::PrimarySeq;
 use Bio::SeqIO;
@@ -13,15 +14,15 @@ use GD::Graph::bars;
 
 =head1 NAME
 
-Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage.
+Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage!
 
 =head1 VERSION
 
-Version 0.07
+Version 0.08
 
 =cut
 
-our $VERSION = '0.07';
+our $VERSION = '0.08';
 
 use vars qw(@ISA %Amnioacid);
 
@@ -53,6 +54,108 @@ my %Amnioacid = (
         'X'=>'Xaa'
     );
 
+=head2
+    Constructor
+=cut
+sub new
+{
+    my($class,@args) = @_;
+    my $self = $class->SUPER::new(@args);
+    my($seq,$id,$acc,$pid,$desc,$alphabet,$given_id,$is_circular,$file,$format,$ncbi_id,$genetic_code) =
+    $self->_rearrange([qw(
+		SEQ
+		DISPLAY_ID
+		ACCESSION_NUMBER
+		PRIMARY_ID
+		DESC
+		ALPHABET
+		ID
+		IS_CIRCULAR
+		FILE
+		FORMAT
+		NCBI_ID
+		GENETIC_CODE
+	)],@args);
+    
+    if($file && $format){
+        ($seq,$id,$alphabet) = $self->_read_localfile($file,$format);
+    }
+    if($ncbi_id){
+        ($seq,$id,$desc,$alphabet) = $self->_read_remotefile($ncbi_id);   
+    }
+	
+    $self = Bio::PrimarySeq->new ( -seq => $seq,
+                                     -id  => $id,
+                                     -accession_number => $acc,
+                                     -display_id => $given_id,
+                                     -desc => $desc,
+                                     -primary_id => $pid,
+                                     -alphabet => $alphabet,
+                                     -is_circular => $is_circular
+                                   );
+    $self->{'genetic_code'} = $genetic_code;
+    _build_codons($self);
+    _map_codon_iupac($self);
+
+    return bless $self, $class;
+}
+
+=head2
+    Internal function
+=cut
+sub _build_codons{
+    my $self = shift;
+
+    my $seq_stats  =  Bio::Tools::SeqStats->new(-seq=>$self);
+    $self->{'codons'}   	  = $seq_stats->count_codons();
+    $self->{'monomers_count'} = $seq_stats->count_monomers();
+    $self->{'seq_mol_weight'} = $seq_stats->get_mol_wt();
+
+    return 1;
+}
+
+=head2
+    Function to read remote file
+=cut
+sub _read_remotefile
+{
+    my ($self,$ncbi_id) =@_;
+    
+    my($seq,$id,$desc,$alphabet);
+    
+    my $retrivefile = new Bio::DB::GenBank(-retrievaltype => 'tempfile' , 
+                                           -format => 'Fasta');
+    
+    my $fetchedfile = $retrivefile->get_Stream_by_acc($ncbi_id);
+    my $seq_data    =  $fetchedfile->next_seq;
+    
+    $seq        = $seq_data->seq;
+    $id         = $seq_data->primary_id;
+    $desc       = $seq_data->desc;
+    $alphabet   = $seq_data->alphabet;
+    
+    return($seq,$id,$desc,$alphabet);
+}
+
+=head2
+    Function to read local file
+=cut
+sub _read_localfile
+{
+    my ($self,$file,$format) = @_;
+    
+    my($seq,$id,$alphabet);
+    
+    my $inputstream = Bio::SeqIO->new(-file => $file,
+                                      -format => $format);
+    my $input       = $inputstream->next_seq();
+    
+    $seq        = $input->seq();
+    $id         = $input->id;
+    $alphabet   = $input->alphabet;
+    
+    return($seq,$id,$alphabet);
+}
 
 =head1 DESCRIPTION
 
@@ -75,6 +178,7 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
 =cut
 
 =head1 SYNOPSIS
+
 
     use Bio::Tools::CodonOptTable;
 
@@ -122,188 +226,10 @@ http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
     # Graph output file extension should be GIF, we support GIF only
     
     $seqobj->generate_graph($myCodons,"myoutput.gif");
-    
-    ...
-=cut
 
-=head1 METHODS
+=head1 FUNCTIONS
 
-=head2 Constructor
-
-    Title   : new
-    
-    Usage1   : $seq    = Bio::Tools::CodonOptTable->new( -seq => 'ATGGGGGTGGTGGTACCCT',
-                                                        -id  => 'human_id',
-                                                        -accession_number => 'AL000012',
-                                                        -genetic_code => 1,
-					      );
-					      
-    Usage2   : $seq    = Bio::Tools::CodonOptTable->new( -file => 'myseq.fasta',
-                                                        -format => 'fasta',
-                                                        -genetic_code => 1,
-					      );
-					      
-    Usage3   : $seq    = Bio::Tools::CodonOptTable->new( -ncbi_id => 'J00522',
-                                                        -genetic_code => 1,
-                                                    );
-					      
-    Function: Returns a new primary seq object from
-	      basic constructors, being a string for the sequence
-	      and strings for id and accession_number.
-	    
-    Returns : a new Bio::PrimarySeq object
-    
-    Args    :   -seq         	    => sequence string
-                -display_id  	    => display id of the sequence (locus name) 
-                -accession_number   => accession number
-                -primary_id  	    => primary id (Genbank id)
-                -desc        	    => description text
-                -alphabet    	    => molecule type (dna,rna,protein)
-                -id          	    => alias for display id
-                -file               => file location
-                -format             => file format
-                -ncbi_id            => NCBI accession number
-                -genetic_code       => 1 (Default)
-                                       # See this list to know more about genetic_code
-                                       # http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
-	      
-    Note    : IF you are reading sequence from file it will call _read_localfile method
-              IF you are fetching file form NCBI it will call _read_remotefile method
-
-=head2 Calculate RSCU
-    
-    Title   : calculate_rscu
-					      
-    Function: Calculate the RSCU(Relative Synonymous Codons Uses).
-	    	      
-    Note    : The formula is used in the following references.
-	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
-
-=head2 Calculate RAC
-    
-    Title   : calculate_rac
-					      
-    Function: Calculate the RAC(Relative Adaptiveness of a Codon).
-	    	      
-    Note    : The formula is used in the following references.
-	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
-
-=head2 Get Prefered Codons based on RAC & RSCU
-    
-    Title   : prefered_codon
-					      
-    Function: Give you prefered codons list.
-
-=head2 Produce RSCU & RAC Graph
-    
-    Title   : generate_graph
-					      
-    Function: Produce a bar graph between RAC(Relative Adaptiveness of a Codon) & RSCU(Relative Synonymous Codons Uses).
-
-=cut
-
-
-=pod
-    Constructor
-=cut
-sub new {
-    my($class,@args) = @_;
-    
-    my $self = $class->SUPER::new(@args);
-    
-    my($seq,$id,$acc,$pid,$desc,$alphabet,$given_id,$is_circular,$file,$format,$ncbi_id,$genetic_code) =
-    $self->_rearrange([qw(
-			SEQ
-			DISPLAY_ID
-			ACCESSION_NUMBER
-			PRIMARY_ID
-			DESC
-			ALPHABET
-			ID
-			IS_CIRCULAR
-			FILE
-			FORMAT
-			NCBI_ID
-			GENETIC_CODE
-		)],@args);
-    
-    if($file && $format)
-    {
-        ($seq,$id,$alphabet) = $self->_read_localfile($file,$format);
-    }
-    if($ncbi_id)
-    {
-        ($seq,$id,$desc,$alphabet) = $self->_read_remotefile($ncbi_id);   
-    }
-	
-    $self = Bio::PrimarySeq->new ( -seq => $seq,
-                                     -id  => $id,
-                                     -accession_number => $acc,
-                                     -display_id => $given_id,
-                                     -desc => $desc,
-                                     -primary_id => $pid,
-                                     -alphabet => $alphabet,
-                                     -is_circular => $is_circular
-                                   );
-    $self->{'genetic_code'} = $genetic_code;
-    _build_codons($self);
-    _map_codon_iupac($self);
-
-    return bless $self, $class;
-}
-
-sub _build_codons{
-    my $self = shift;
-
-    my $seq_stats  =  Bio::Tools::SeqStats->new(-seq=>$self);
-    $self->{'codons'}   	  = $seq_stats->count_codons();
-    $self->{'monomers_count'} = $seq_stats->count_monomers();
-    $self->{'seq_mol_weight'} = $seq_stats->get_mol_wt();
-
-    return 1;
-}
-=pod
-    Function to read remote file
-=cut
-sub _read_remotefile
-{
-    my ($self,$ncbi_id) =@_;
-    
-    my($seq,$id,$desc,$alphabet);
-    
-    my $retrivefile = new Bio::DB::GenBank(-retrievaltype => 'tempfile' , 
-                                           -format => 'Fasta');
-    
-    my $fetchedfile = $retrivefile->get_Stream_by_acc($ncbi_id);
-    my $seq_data    =  $fetchedfile->next_seq;
-    
-    $seq        = $seq_data->seq;
-    $id         = $seq_data->primary_id;
-    $desc       = $seq_data->desc;
-    $alphabet   = $seq_data->alphabet;
-    
-    return($seq,$id,$desc,$alphabet);
-}
-=pod
-    Function to read local file
-=cut
-sub _read_localfile
-{
-    my ($self,$file,$format) = @_;
-    
-    my($seq,$id,$alphabet);
-    
-    my $inputstream = Bio::SeqIO->new(-file => $file,
-                                      -format => $format);
-    my $input       = $inputstream->next_seq();
-    
-    $seq        = $input->seq();
-    $id         = $input->id;
-    $alphabet   = $input->alphabet;
-    
-    return($seq,$id,$alphabet);
-}
-=pod
+=head2
     Function to produce rscu and rac table
 =cut
 sub rscu_rac_table
@@ -317,7 +243,8 @@ sub rscu_rac_table
     
     return \@sorted_codons_by_aa;
 }
-=pod
+
+=head2
     Function to map codon and iupac names
 =cut
 sub _map_codon_iupac
@@ -345,8 +272,12 @@ sub _map_codon_iupac
     
     return 1;
 }
-=pod
-    Function to calculate rscu
+
+=head2 Calculate RSCU
+    Title   : calculate_rscu
+    Function: Calculate the RSCU(Relative Synonymous Codons Uses).
+    Note    : The formula is used in the following references.
+	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
 =cut
 sub calculate_rscu
 {
@@ -389,8 +320,12 @@ sub calculate_rscu
     }
     return (\@myCodons,\%rscu_max_table);
 }
-=pod
-    Function to calculate rac value
+
+=head2 Calculate RAC
+    Title   : calculate_rac
+    Function: Calculate the RAC(Relative Adaptiveness of a Codon).
+    Note    : The formula is used in the following references.
+	    http://www.pubmedcentral.nih.gov/articlerender.fcgi?tool=pubmed&pubmedid=3547335
 =cut
 sub calculate_rac
 {
@@ -418,8 +353,10 @@ sub calculate_rac
     # CAI of >0.9 is regarded as very good, in terms of high gene expression level.
     return (\@myCodons);
 }
-=pod
-    Function to get prefered codons
+
+=head2 Get Prefered Codons based on RAC & RSCU
+    Title   : prefered_codon
+    Function: Give you prefered codons list.
 =cut
 sub prefered_codon
 {
@@ -439,8 +376,10 @@ sub prefered_codon
     }
     return $prefered_codon;
 }
-=pod
-    Function to generate graph
+
+=head2 Produce RSCU & RAC Graph
+    Title   : generate_graph
+    Function: Produce a bar graph between RAC(Relative Adaptiveness of a Codon) & RSCU(Relative Synonymous Codons Uses).
 =cut
 sub generate_graph
 {
@@ -508,6 +447,8 @@ the web interface at L<http://rt.cpan.org/NoAuth/ReportBug.html?Queue=Bio-Tools-
 automatically be notified of progress on your bug as I make changes.
 
 
+
+
 =head1 SUPPORT
 
 You can find documentation for this module with the perldoc command.
@@ -533,19 +474,17 @@ L<http://cpanratings.perl.org/d/Bio-Tools-CodonOptTable>
 
 =item * Search CPAN
 
-L<http://search.cpan.org/dist/Bio-Tools-CodonOptTable/>
+L<http://search.cpan.org/dist/Bio-Tools-CodonOptTable>
 
 =back
 
 
 =head1 ACKNOWLEDGEMENTS
 
-Lalchand Kumawat <lalchand82@gmail.com> 
-Rajneesh Kumar Sharma <biorajneesh@gmail.com>
 
 =head1 COPYRIGHT & LICENSE
 
-Copyright 2008 Rakesh Kumar Shardiwal, all rights reserved.
+Copyright 2010 Rakesh Kumar Shardiwal, all rights reserved.
 
 This program is free software; you can redistribute it and/or modify it
 under the same terms as Perl itself.
@@ -554,5 +493,3 @@ under the same terms as Perl itself.
 =cut
 
 1; # End of Bio::Tools::CodonOptTable
-
-__END__

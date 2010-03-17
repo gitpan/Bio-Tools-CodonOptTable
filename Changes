@@ -12,3 +12,5 @@ Revision history for Bio-Tools-CodonOptTable
 	Added new sub to get prefered codons, and optimized the code
 0.06	19th Jan 09
 	just mistake while make archive file
+0.08	17th Mar 10
+	improved all failed test
