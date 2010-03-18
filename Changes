@@ -14,3 +14,5 @@ Revision history for Bio-Tools-CodonOptTable
 	just mistake while make archive file
 0.08	17th Mar 10
 	improved all failed test
+0.09	18th Mar 10
+	cpan test improved

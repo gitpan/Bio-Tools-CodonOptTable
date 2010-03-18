@@ -1,22 +1,22 @@
 --- #YAML:1.0
-name:               Bio-Tools-CodonOptTable
-version:            0.08
-abstract:           A more elaborative way to check the codons usage!
-author:
+name:                Bio-Tools-CodonOptTable
+version:             0.09
+abstract:            A more elaborative way to check the codons usage!
+license:             ~
+author:              
     - Rakesh Kumar Shardiwal <rakesh.shardiwal@gmail.com>
-license:            unknown
-distribution_type:  module
-configure_requires:
-    ExtUtils::MakeMaker:  0
-build_requires:
-    ExtUtils::MakeMaker:  0
-requires:
-    Test::More:  0
-no_index:
-    directory:
-        - t
-        - inc
-generated_by:       ExtUtils::MakeMaker version 6.56
+generated_by:        ExtUtils::MakeMaker version 6.42
+distribution_type:   module
+requires:     
+    Bio::DB::GenBank:              0
+    Bio::PrimarySeq:               0
+    Bio::Root::Root:               0
+    Bio::SeqIO:                    0
+    Bio::Tools::CodonTable:        0
+    Bio::Tools::SeqStats:          0
+    Data::Dumper:                  0
+    GD::Graph::bars:               0
+    Test::More:                    0
 meta-spec:
-    url:      http://module-build.sourceforge.net/META-spec-v1.4.html
-    version:  1.4
+    url:     http://module-build.sourceforge.net/META-spec-v1.3.html
+    version: 1.3

@@ -18,17 +18,17 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage!
 
 =head1 VERSION
 
-Version 0.08
+Version 0.09
 
 =cut
 
-our $VERSION = '0.08';
+our $VERSION = '0.09';
 
-use vars qw(@ISA %Amnioacid);
+use vars qw(@ISA %Aminoacid);
 
 @ISA = ('Bio::Root::Root', 'Bio::SeqIO', 'Bio::PrimarySeq');
 
-my %Amnioacid = (
+my %Aminoacid = (
         'A'=>'Ala',
         'R'=>'Arg',
         'N'=>'Asn',
@@ -53,6 +53,78 @@ my %Amnioacid = (
         'Z'=>'glx',
         'X'=>'Xaa'
     );
+
+=head1 DESCRIPTION
+
+The purpose of this module is to show codon usage.
+
+We produces each codon frequency,
+	    Relative Synonymous Codons Uses and
+	    Relative Adaptiveness of a Codon table and bar graph
+that will help you to calculate the Codon Adaptation Index (CAI) of a gene, to see the gene expression level.
+
+Relative Synonymous Codons Uses(RSCU) values are the number of times a particular codon is observed, relative to the number of times
+that the codon would be observed in the absence of any codon usage bias.
+
+In the absence of any codon usage bias, the RSCU value would be 1.00.
+A codon that is used less frequently than expected will have a value of less than 1.00 and vice versa for a codon that is used more frequently than expected.
+
+Genetics Code: NCBI takes great care to ensure that the translation for each coding sequence (CDS) present in GenBank records is correct. Central to this effort is careful checking on the taxonomy of each record and assignment of the correct genetic code (shown as a /transl_table qualifier on the CDS in the flat files) for each organism and record. This page summarizes and references this work.
+http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+
+=cut
+
+=head1 SYNOPSIS
+
+
+    use Bio::Tools::CodonOptTable;
+
+    my $seqobj = Bio::Tools::CodonOptTable->new ( -seq => 'ATGGGGTGGGCACCATGCTGCTGTCGTGAATTTGGGCACGATGGTGTACGTGCTCGTAGCTAGGGTGGGTGGTTTG',
+                                                -id  => 'GeneFragment-12',
+                                                -accession_number => 'Myseq1',
+                                                -alphabet => 'dna',
+                                                -is_circular => 1,
+                                                -genetic_code => 1,
+				   );
+
+    B<#If you wanna read from file>
+    my $seqobj = Bio::Tools::CodonOptTable->new(-file => "contig.fasta",
+                                             -format => 'Fasta',
+                                             -genetic_code => 1,
+                                             );
+
+    B<#If you have Accession number and want to get file from NCBI>
+    my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522",
+                                                -genetic_code => 1,);
+
+    my $myCodons = $seqobj->rscu_rac_table();
+    
+    if($myCodons)
+    {
+	for my $each_aa (@$myCodons)
+	{
+	    print "Codon      : ",$each_aa->{'codon'},"\t";
+	    print "Frequency  : ",$each_aa->{'frequency'},"\t";
+	    print "AminoAcid  : ",$each_aa->{'aa_name'},"\t";
+	    print "RSCU Value : ",$each_aa->{'rscu'},"\t"; #Relative Synonymous Codons Uses
+	    print "RAC Value  : ",$each_aa->{'rac'},"\t"; #Relative Adaptiveness of a Codon
+	    print "\n";
+	}
+    }
+    
+    B<# To get the prefered codon list based on RSCU & RAC Values >
+    my $prefered_codons = $seqobj->prefered_codon($myCodons);
+
+    while ( my ($amino_acid, $codon) = each(%$prefered_codons) ) {
+        print "AminoAcid : $amino_acid \t Codon : $codon\n";
+    }
+    
+    B<# To produce a graph between RSCU & RAC>
+    # Graph output file extension should be GIF, we support GIF only
+    
+    $seqobj->generate_graph($myCodons,"myoutput.gif");
+
+=head1 FUNCTIONS
 
 =head2
     Constructor
@@ -157,78 +229,6 @@ sub _read_localfile
     return($seq,$id,$alphabet);
 }
 
-=head1 DESCRIPTION
-
-The purpose of this module is to show codon usage.
-
-We produces each codon frequency,
-	    Relative Synonymous Codons Uses and
-	    Relative Adaptiveness of a Codon table and bar graph
-that will help you to calculate the Codon Adaptation Index (CAI) of a gene, to see the gene expression level.
-
-Relative Synonymous Codons Uses(RSCU) values are the number of times a particular codon is observed, relative to the number of times
-that the codon would be observed in the absence of any codon usage bias.
-
-In the absence of any codon usage bias, the RSCU value would be 1.00.
-A codon that is used less frequently than expected will have a value of less than 1.00 and vice versa for a codon that is used more frequently than expected.
-
-Genetics Code: NCBI takes great care to ensure that the translation for each coding sequence (CDS) present in GenBank records is correct. Central to this effort is careful checking on the taxonomy of each record and assignment of the correct genetic code (shown as a /transl_table qualifier on the CDS in the flat files) for each organism and record. This page summarizes and references this work.
-http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
-
-=cut
-
-=head1 SYNOPSIS
-
-
-    use Bio::Tools::CodonOptTable;
-
-    my $seqobj = Bio::Tools::CodonOptTable->new ( -seq => 'ATGGGGTGGGCACCATGCTGCTGTCGTGAATTTGGGCACGATGGTGTACGTGCTCGTAGCTAGGGTGGGTGGTTTG',
-                                                -id  => 'GeneFragment-12',
-                                                -accession_number => 'Myseq1',
-                                                -alphabet => 'dna',
-                                                -is_circular => 1,
-                                                -genetic_code => 1,
-				   );
-
-    B<#If you wanna read from file>
-    my $seqobj = Bio::Tools::CodonOptTable->new(-file => "contig.fasta",
-                                             -format => 'Fasta',
-                                             -genetic_code => 1,
-                                             );
-
-    B<#If you have Accession number and want to get file from NCBI>
-    my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522",
-                                                -genetic_code => 1,);
-
-    my $myCodons = $seqobj->rscu_rac_table();
-    
-    if($myCodons)
-    {
-	for my $each_aa (@$myCodons)
-	{
-	    print "Codon      : ",$each_aa->{'codon'},"\t";
-	    print "Frequency  : ",$each_aa->{'frequency'},"\t";
-	    print "AminoAcid  : ",$each_aa->{'aa_name'},"\t";
-	    print "RSCU Value : ",$each_aa->{'rscu'},"\t"; #Relative Synonymous Codons Uses
-	    print "RAC Value  : ",$each_aa->{'rac'},"\t"; #Relative Adaptiveness of a Codon
-	    print "\n";
-	}
-    }
-    
-    B<# To get the prefered codon list based on RSCU & RAC Values >
-    my $prefered_codons = $seqobj->prefered_codon($myCodons);
-
-    while ( my ($amino_acid, $codon) = each(%$prefered_codons) ) {
-        print "AminoAcid : $amino_acid \t Codon : $codon\n";
-    }
-    
-    B<# To produce a graph between RSCU & RAC>
-    # Graph output file extension should be GIF, we support GIF only
-    
-    $seqobj->generate_graph($myCodons,"myoutput.gif");
-
-=head1 FUNCTIONS
-
 =head2
     Function to produce rscu and rac table
 =cut
@@ -262,7 +262,7 @@ sub _map_codon_iupac
     foreach my $single_codon (keys %$codons)
     {
         my $aa_name_abri    = $myCodonTable->translate($single_codon); 
-        my $aa_name         = $Amnioacid{$aa_name_abri};
+        my $aa_name         = $Aminoacid{$aa_name_abri};
         $myCodons->{$single_codon}={
             'frequency'     => $codons->{$single_codon},
             'aa_name'       => $aa_name,
