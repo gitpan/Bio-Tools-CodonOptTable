@@ -16,3 +16,5 @@ Revision history for Bio-Tools-CodonOptTable
 	improved all failed test
 0.09	18th Mar 10
 	cpan test improved
+1.00	8th Sep 10
+	Code cleanup and warnings removed
