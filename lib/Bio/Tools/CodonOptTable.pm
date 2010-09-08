@@ -11,105 +11,89 @@ use Bio::Tools::SeqStats;
 use Bio::Tools::CodonTable;
 use Bio::DB::GenBank;
 use GD::Graph::bars;
+use Text::Textile qw(textile);
+use File::Slurp;
 
-our $VERSION = '1.01';
+our $VERSION = '1.02';
 
 use vars qw(@ISA %AMINOACID %GENETIC_CODE);
 
 @ISA = ( 'Bio::Root::Root', 'Bio::SeqIO', 'Bio::PrimarySeq' );
 
 %GENETIC_CODE = (
-    'TCA' => 'S',       # Serine
-    'TCC' => 'S',       # Serine
-    'TCG' => 'S',       # Serine
-    'TCT' => 'S',       # Serine
-    'TTC' => 'F',       # Phenylalanine
-    'TTT' => 'F',       # Phenylalanine
-    'TTA' => 'L',       # Leucine
-    'TTG' => 'L',       # Leucine
-    'TAC' => 'Y',       # Tyrosine
-    'TAT' => 'Y',       # Tyrosine
-    'TAA' => 'STOP',    # Stop
-    'TAG' => 'STOP',    # Stop
-    'TGC' => 'C',       # Cysteine
-    'TGT' => 'C',       # Cysteine
-    'TGA' => 'STOP',    # Stop
-    'TGG' => 'W',       # Tryptophan
-    'CTA' => 'L',       # Leucine
-    'CTC' => 'L',       # Leucine
-    'CTG' => 'L',       # Leucine
-    'CTT' => 'L',       # Leucine
-    'CCA' => 'P',       # Proline
-    'CCC' => 'P',       # Proline
-    'CCG' => 'P',       # Proline
-    'CCT' => 'P',       # Proline
-    'CAC' => 'H',       # Histidine
-    'CAT' => 'H',       # Histidine
-    'CAA' => 'Q',       # Glutamine
-    'CAG' => 'Q',       # Glutamine
-    'CGA' => 'R',       # Arginine
-    'CGC' => 'R',       # Arginine
-    'CGG' => 'R',       # Arginine
-    'CGT' => 'R',       # Arginine
-    'ATA' => 'I',       # Isoleucine
-    'ATC' => 'I',       # Isoleucine
-    'ATT' => 'I',       # Isoleucine
-    'ATG' => 'M',       # Methionine
-    'ACA' => 'T',       # Threonine
-    'ACC' => 'T',       # Threonine
-    'ACG' => 'T',       # Threonine
-    'ACT' => 'T',       # Threonine
-    'AAC' => 'N',       # Asparagine
-    'AAT' => 'N',       # Asparagine
-    'AAA' => 'K',       # Lysine
-    'AAG' => 'K',       # Lysine
-    'AGC' => 'S',       # Serine
-    'AGT' => 'S',       # Serine
-    'AGA' => 'R',       # Arginine
-    'AGG' => 'R',       # Arginine
-    'GTA' => 'V',       # Valine
-    'GTC' => 'V',       # Valine
-    'GTG' => 'V',       # Valine
-    'GTT' => 'V',       # Valine
-    'GCA' => 'A',       # Alanine
-    'GCC' => 'A',       # Alanine
-    'GCG' => 'A',       # Alanine
-    'GCT' => 'A',       # Alanine
-    'GAC' => 'D',       # Aspartic Acid
-    'GAT' => 'D',       # Aspartic Acid
-    'GAA' => 'E',       # Glutamic Acid
-    'GAG' => 'E',       # Glutamic Acid
-    'GGA' => 'G',       # Glycine
-    'GGC' => 'G',       # Glycine
-    'GGG' => 'G',       # Glycine
-    'GGT' => 'G',       # Glycine
+    'TCA' => 'S',    # Serine
+    'TCC' => 'S',    # Serine
+    'TCG' => 'S',    # Serine
+    'TCT' => 'S',    # Serine
+    'TTC' => 'F',    # Phenylalanine
+    'TTT' => 'F',    # Phenylalanine
+    'TTA' => 'L',    # Leucine
+    'TTG' => 'L',    # Leucine
+    'TAC' => 'Y',    # Tyrosine
+    'TAT' => 'Y',    # Tyrosine
+    'TAA' => '*',    # Stop
+    'TAG' => '*',    # Stop
+    'TGC' => 'C',    # Cysteine
+    'TGT' => 'C',    # Cysteine
+    'TGA' => '*',    # Stop
+    'TGG' => 'W',    # Tryptophan
+    'CTA' => 'L',    # Leucine
+    'CTC' => 'L',    # Leucine
+    'CTG' => 'L',    # Leucine
+    'CTT' => 'L',    # Leucine
+    'CCA' => 'P',    # Proline
+    'CCC' => 'P',    # Proline
+    'CCG' => 'P',    # Proline
+    'CCT' => 'P',    # Proline
+    'CAC' => 'H',    # Histidine
+    'CAT' => 'H',    # Histidine
+    'CAA' => 'Q',    # Glutamine
+    'CAG' => 'Q',    # Glutamine
+    'CGA' => 'R',    # Arginine
+    'CGC' => 'R',    # Arginine
+    'CGG' => 'R',    # Arginine
+    'CGT' => 'R',    # Arginine
+    'ATA' => 'I',    # Isoleucine
+    'ATC' => 'I',    # Isoleucine
+    'ATT' => 'I',    # Isoleucine
+    'ATG' => 'M',    # Methionine
+    'ACA' => 'T',    # Threonine
+    'ACC' => 'T',    # Threonine
+    'ACG' => 'T',    # Threonine
+    'ACT' => 'T',    # Threonine
+    'AAC' => 'N',    # Asparagine
+    'AAT' => 'N',    # Asparagine
+    'AAA' => 'K',    # Lysine
+    'AAG' => 'K',    # Lysine
+    'AGC' => 'S',    # Serine
+    'AGT' => 'S',    # Serine
+    'AGA' => 'R',    # Arginine
+    'AGG' => 'R',    # Arginine
+    'GTA' => 'V',    # Valine
+    'GTC' => 'V',    # Valine
+    'GTG' => 'V',    # Valine
+    'GTT' => 'V',    # Valine
+    'GCA' => 'A',    # Alanine
+    'GCC' => 'A',    # Alanine
+    'GCG' => 'A',    # Alanine
+    'GCT' => 'A',    # Alanine
+    'GAC' => 'D',    # Aspartic Acid
+    'GAT' => 'D',    # Aspartic Acid
+    'GAA' => 'E',    # Glutamic Acid
+    'GAG' => 'E',    # Glutamic Acid
+    'GGA' => 'G',    # Glycine
+    'GGC' => 'G',    # Glycine
+    'GGG' => 'G',    # Glycine
+    'GGT' => 'G',    # Glycine
 );
 
 %AMINOACID = (
-    'A' => 'Ala',
-    'R' => 'Arg',
-    'N' => 'Asn',
-    'D' => 'Asp',
-    'C' => 'Cys',
-    'Q' => 'Gln',
-    'E' => 'Glu',
-    'G' => 'Gly',
-    'H' => 'His',
-    'I' => 'Ile',
-    'L' => 'Leu',
-    'K' => 'Lys',
-    'M' => 'Met',
-    'F' => 'Phe',
-    'P' => 'Pro',
-    'S' => 'Ser',
-    'T' => 'Thr',
-    'W' => 'Trp',
-    'Y' => 'Tyr',
-    'V' => 'Val',
-    'B' => 'Asx',
-    'Z' => 'glx',
-    'X' => 'Xaa',
-    '*' => 'STOP'
+    'A' => 'Ala', 'R' => 'Arg', 'N' => 'Asn', 'D' => 'Asp',
+    'C' => 'Cys', 'Q' => 'Gln', 'E' => 'Glu', 'G' => 'Gly',
+    'H' => 'His', 'I' => 'Ile', 'L' => 'Leu', 'K' => 'Lys',
+    'M' => 'Met', 'F' => 'Phe', 'P' => 'Pro', 'S' => 'Ser',
+    'T' => 'Thr', 'W' => 'Trp', 'Y' => 'Tyr', 'V' => 'Val',
+    'B' => 'Asx', 'Z' => 'glx', 'X' => 'Xaa', '*' => 'Stop'
 );
 
 sub new {
@@ -338,8 +322,9 @@ sub calculate_cai {
         $count++;
     }
     my $cai = $w * ( 1 / $count );
+
 # A CAI of 1.0 is considered to be perfect in the desired expression organism, and a
-# CAI of >0.9 is regarded as very good, in terms of high gene expression level.	
+# CAI of >0.9 is regarded as very good, in terms of high gene expression level.
     return sprintf( "%.2f", $cai );
 }
 
@@ -423,6 +408,100 @@ sub generate_graph {
     close(GPH);
 }
 
+sub generate_report {
+    my ( $self, $out_file ) = @_;
+
+    my $myCodons     = $self->rscu_rac_table();
+    my $sequence_id  = $self->id;
+    my $genetic_code = $self->{genetic_code};
+    my $monomers     = $self->{monomers_count};
+    my $cai          = $self->calculate_cai($myCodons);
+
+    my %colors = (
+        'Ala'  => '#f4f4f4', 'Arg'  => '#FF99FF', 'Asn'  => '#CC99CC',
+        'Asp'  => '#99FFCC', 'Cys'  => '#99CC99', 'Gln'  => '#CCFF00',
+        'Glu'  => '#FF00CC', 'Gly'  => '#33FFCC', 'His'  => '#66CCFF',
+        'Ile'  => '#c9c9c9', 'Leu'  => '#CCFFFF', 'Lys'  => '#FFFFCC',
+        'Met'  => '#FFFF66', 'Phe'  => '#FFCC00', 'Pro'  => '#F4F4F4',
+        'Ser'  => '#FF99FF', 'Thr'  => '#CC99CC', 'Trp'  => '#99FFCC',
+        'Tyr'  => '#CCFF00', 'Val'  => '#33FFCC', 'Asx'  => '#6666CC',
+        'glx'  => '#FF00CC', 'Xaa'  => '#cccccc', 'Stop' => '#f8f8f8'
+    );
+
+    my $codons  = "|%{color:red}CODON%|";
+    my $aa_name = "|%{color:red}AMINOACID%|";
+    my $counts  = "|%{color:red}COUNT%|";
+    my $rscu    = "|%{color:red}RSCU%|";
+    my $rac     = "|%{color:red}RAC%|";
+
+    foreach my $each_codon (@$myCodons) {
+        my $frequency  = $each_codon->{frequency} || 'O';
+        my $amino_acid = $each_codon->{aa_name};
+        my $codon      = $each_codon->{codon};
+        my $rscu_value = $each_codon->{rscu};
+        my $rac_value  = $each_codon->{rac};
+        my $aa_color   = $colors{$amino_acid};
+
+        $codons  .= "%{background:$aa_color}$codon%|";
+        $aa_name .= "%{background:$aa_color}$amino_acid%|";
+        $counts  .= "%{background:$aa_color}$frequency%|";
+        $rscu    .= "%{background:$aa_color}$rscu_value%|";
+        $rac     .= "%{background:$aa_color}$rac_value%|";
+    }
+    my $codon_uses = "$codons\n$aa_name\n$counts\n";
+    my $rscu_uses  = "$codons\n$aa_name\n$rscu\n";
+    my $rac_uses   = "$codons\n$aa_name\n$rac\n";
+    my $mono_mers =
+        "|%{color:red}A%|"
+      . $monomers->{A} . "|\n"
+      . "|%{color:red}T%|"
+      . $monomers->{T} . "|\n"
+      . "|%{color:red}G%|"
+      . $monomers->{G} . "|\n"
+      . "|%{color:red}C%|"
+      . $monomers->{C} . "|\n";
+
+    my $gc_percentage =
+      ( ( $monomers->{G} + $monomers->{C} ) /
+          ( $monomers->{A} + $monomers->{T} + $monomers->{G} + $monomers->{C} )
+      ) * 100;
+    $gc_percentage = sprintf( "%.2f", $gc_percentage );
+
+    my $REPORT = <<EOT;
+h1. Bio::Tools::CodonOptTable
+
+%{color:green}Report for $sequence_id%
+
+%{color:red}Codon Adaptation Index (CAI) for sequence% : $cai
+
+%{color:red}GC percentage for sequence% : $gc_percentage%
+
+%{color:red}GENETIC CODE USED% : $genetic_code "--more about genetic code--":http://www.ncbi.nlm.nih.gov/Taxonomy/Utils/wprintgc.cgi
+
+%{background:#336699;color:white;padding:5px}++**CODON USAGE**++%
+
+$codon_uses
+
+%{background:#336699;color:white;padding:5px}++**Relative Synonimous Codon Usage (RSCU)**++%
+
+$rscu_uses
+
+%{background:#336699;color:white;padding:5px}++**Relative Adaptiveness of Codon**++%
+
+$rac_uses
+
+%{background:#336699;color:white;padding:5px}++**Monomers**++%
+
+$mono_mers
+
+"Source code":http://search.cpan.org/~shardiwal/Bio-Tools-CodonOptTable-1.01/lib/Bio/Tools/CodonOptTable.pm is available.
+
+EOT
+
+    my $html = textile($REPORT);
+    write_file( $out_file, $html );
+}
+
 1;    # End of Bio::Tools::CodonOptTable
 
 __END__
@@ -433,60 +512,63 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage!
 
 =head1 VERSION
 
-Version 1.01
+Version 1.02
 
 =head1 SYNOPSIS
 
     use Bio::Tools::CodonOptTable;
 
-    my $seqobj = Bio::Tools::CodonOptTable->new ( -seq => 'ATGGGGTGGGCACCATGCTGCTGTCGTGAATTTGGGCACGATGGTGTACGTGCTCGTAGCTAGGGTGGGTGGTTTG',
-                                                -id  => 'GeneFragment-12',
-                                                -accession_number => 'Myseq1',
-                                                -alphabet => 'dna',
-                                                -is_circular => 1,
-                                                -genetic_code => 1,
-				   );
-
-    B<#If you wanna read from file>
-    my $seqobj = Bio::Tools::CodonOptTable->new(-file => "contig.fasta",
-                                             -format => 'Fasta',
-                                             -genetic_code => 1,
-                                             );
-
-    B<#If you have Accession number and want to get file from NCBI>
-    my $seqobj = Bio::Tools::CodonOptTable->new(-ncbi_id => "J00522",
-                                                -genetic_code => 1,);
-
+    my $seqobj = Bio::Tools::CodonOptTable->new(
+        -seq              => 'ATGGGGTGGGCACCATGCTGCTGTCGTGAATTTGGGCACGATGGTGTACGTGCTCGTAGCTAGGGTGGGTGGTTTG',
+        -id               => 'GeneFragment-12',
+        -accession_number => 'Myseq1',
+        -alphabet         => 'dna',
+        -is_circular      => 1,
+        -genetic_code     => 1,
+    );
+    
+    #If you wanna read from file
+    my $seqobj = Bio::Tools::CodonOptTable->new(
+        -file         => "contig.fasta",
+        -format       => 'Fasta',
+        -genetic_code => 1,
+    );
+    
+    #If you have Accession number and want to get file from NCBI
+    my $seqobj = Bio::Tools::CodonOptTable->new(
+        -ncbi_id      => "J00522",
+        -genetic_code => 1,
+    );
+    
     my $myCodons = $seqobj->rscu_rac_table();
     
-    if($myCodons)
-    {
-	for my $each_aa (@$myCodons)
-	{
-	    print "Codon      : ",$each_aa->{'codon'},"\t";
-	    print "Frequency  : ",$each_aa->{'frequency'},"\t";
-	    print "AminoAcid  : ",$each_aa->{'aa_name'},"\t";
-	    print "RSCU Value : ",$each_aa->{'rscu'},"\t"; #Relative Synonymous Codons Uses
-	    print "RAC Value  : ",$each_aa->{'rac'},"\t"; #Relative Adaptiveness of a Codon
-	    print "\n";
-	}
+    if ($myCodons) {
+        foreach my $each_aa (@$myCodons) {
+            print "Codon      : ", $each_aa->{'codon'},     "\t";
+            print "Frequency  : ", $each_aa->{'frequency'}, "\t";
+            print "AminoAcid  : ", $each_aa->{'aa_name'},   "\t";
+            print "RSCU Value : ", $each_aa->{'rscu'},      "\t";    #Relative Synonymous Codons Uses
+            print "RAC Value  : ", $each_aa->{'rac'},       "\t";    #Relative Adaptiveness of a Codon
+            print "\n";
+        }
     }
     
-    B<# To get the prefered codon list based on RSCU & RAC Values >
+    # To get the prefered codon list based on RSCU & RAC Values
     my $prefered_codons = $seqobj->prefered_codon($myCodons);
-
-    while ( my ($amino_acid, $codon) = each(%$prefered_codons) ) {
+    while ( my ( $amino_acid, $codon ) = each(%$prefered_codons) ) {
         print "AminoAcid : $amino_acid \t Codon : $codon\n";
     }
     
-    B<# To produce a graph between RSCU & RAC>
+    # To produce a graph between RSCU & RAC
     # Graph output file extension should be GIF, we support GIF only
+    $seqobj->generate_graph( $myCodons, $outfile_name );
     
-    $seqobj->generate_graph($myCodons,"myoutput.gif");
-
-    B<# To Calculate Codon Adaptation Index (CAI)>
-  
+    # To Calculate Codon Adaptation Index (CAI)    
     my $gene_cai = $seqobj->calculate_cai($myCodons);
+
+    # To Produce HTML report
+    # This function will generate HTML report, outfile extension should be .html
+    $seqobj->generate_report($outfile_name);
 
 =head1 DESCRIPTION
 
@@ -522,13 +604,17 @@ To Produce RSCU and RAC table along with codon and Amino acid name.
 
 Return you prefered codons list.
 
-=item generate_graph($myCodons,"< output file >.gif")
+=item generate_graph($myCodons,"outputfile.gif")
 
 Produce a bar graph between RAC(Relative Adaptiveness of a Codon) & RSCU (Relative Synonymous Codons Uses).
 
 =item calculate_cai($myCodons)
 
 Calculate Codon Adaptation Index (CAI) for sequence.
+
+=item generate_report($outfile_name);
+
+To Produce HTML report, this function will generate HTML report, outfile extension should be .html
 
 =back
 
@@ -570,10 +656,6 @@ L<http://cpanratings.perl.org/d/Bio-Tools-CodonOptTable>
 L<http://search.cpan.org/dist/Bio-Tools-CodonOptTable>
 
 =back
-
-
-=head1 ACKNOWLEDGEMENTS
-
 
 =head1 COPYRIGHT & LICENSE
 
