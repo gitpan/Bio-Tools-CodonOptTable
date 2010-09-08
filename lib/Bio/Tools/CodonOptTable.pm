@@ -12,13 +12,80 @@ use Bio::Tools::CodonTable;
 use Bio::DB::GenBank;
 use GD::Graph::bars;
 
-our $VERSION = '1.00';
+our $VERSION = '1.01';
 
-use vars qw(@ISA %Aminoacid);
+use vars qw(@ISA %AMINOACID %GENETIC_CODE);
 
 @ISA = ( 'Bio::Root::Root', 'Bio::SeqIO', 'Bio::PrimarySeq' );
 
-my %Aminoacid = (
+%GENETIC_CODE = (
+    'TCA' => 'S',       # Serine
+    'TCC' => 'S',       # Serine
+    'TCG' => 'S',       # Serine
+    'TCT' => 'S',       # Serine
+    'TTC' => 'F',       # Phenylalanine
+    'TTT' => 'F',       # Phenylalanine
+    'TTA' => 'L',       # Leucine
+    'TTG' => 'L',       # Leucine
+    'TAC' => 'Y',       # Tyrosine
+    'TAT' => 'Y',       # Tyrosine
+    'TAA' => 'STOP',    # Stop
+    'TAG' => 'STOP',    # Stop
+    'TGC' => 'C',       # Cysteine
+    'TGT' => 'C',       # Cysteine
+    'TGA' => 'STOP',    # Stop
+    'TGG' => 'W',       # Tryptophan
+    'CTA' => 'L',       # Leucine
+    'CTC' => 'L',       # Leucine
+    'CTG' => 'L',       # Leucine
+    'CTT' => 'L',       # Leucine
+    'CCA' => 'P',       # Proline
+    'CCC' => 'P',       # Proline
+    'CCG' => 'P',       # Proline
+    'CCT' => 'P',       # Proline
+    'CAC' => 'H',       # Histidine
+    'CAT' => 'H',       # Histidine
+    'CAA' => 'Q',       # Glutamine
+    'CAG' => 'Q',       # Glutamine
+    'CGA' => 'R',       # Arginine
+    'CGC' => 'R',       # Arginine
+    'CGG' => 'R',       # Arginine
+    'CGT' => 'R',       # Arginine
+    'ATA' => 'I',       # Isoleucine
+    'ATC' => 'I',       # Isoleucine
+    'ATT' => 'I',       # Isoleucine
+    'ATG' => 'M',       # Methionine
+    'ACA' => 'T',       # Threonine
+    'ACC' => 'T',       # Threonine
+    'ACG' => 'T',       # Threonine
+    'ACT' => 'T',       # Threonine
+    'AAC' => 'N',       # Asparagine
+    'AAT' => 'N',       # Asparagine
+    'AAA' => 'K',       # Lysine
+    'AAG' => 'K',       # Lysine
+    'AGC' => 'S',       # Serine
+    'AGT' => 'S',       # Serine
+    'AGA' => 'R',       # Arginine
+    'AGG' => 'R',       # Arginine
+    'GTA' => 'V',       # Valine
+    'GTC' => 'V',       # Valine
+    'GTG' => 'V',       # Valine
+    'GTT' => 'V',       # Valine
+    'GCA' => 'A',       # Alanine
+    'GCC' => 'A',       # Alanine
+    'GCG' => 'A',       # Alanine
+    'GCT' => 'A',       # Alanine
+    'GAC' => 'D',       # Aspartic Acid
+    'GAT' => 'D',       # Aspartic Acid
+    'GAA' => 'E',       # Glutamic Acid
+    'GAG' => 'E',       # Glutamic Acid
+    'GGA' => 'G',       # Glycine
+    'GGC' => 'G',       # Glycine
+    'GGG' => 'G',       # Glycine
+    'GGT' => 'G',       # Glycine
+);
+
+%AMINOACID = (
     'A' => 'Ala',
     'R' => 'Arg',
     'N' => 'Asn',
@@ -41,7 +108,8 @@ my %Aminoacid = (
     'V' => 'Val',
     'B' => 'Asx',
     'Z' => 'glx',
-    'X' => 'Xaa'
+    'X' => 'Xaa',
+    '*' => 'STOP'
 );
 
 sub new {
@@ -101,13 +169,14 @@ sub _build_codons {
     my $seq_stats = Bio::Tools::SeqStats->new( -seq => $self );
     my $codons = $seq_stats->count_codons();
     my $total_codons;
-    foreach my $codon ( keys %$codons ) {
-        $total_codons += $codons->{$codon};
+    foreach my $codon ( keys %GENETIC_CODE ) {
+        if ( !exists $codons->{$codon} ) {
+            $codons->{$codon} = 0;
+        }
     }
     $self->{'codons'}         = $codons;
     $self->{'monomers_count'} = $seq_stats->count_monomers();
     $self->{'seq_mol_weight'} = $seq_stats->get_mol_wt();
-    $self->{'total_codons'}   = $total_codons;
 
     return 1;
 }
@@ -176,7 +245,7 @@ sub _map_codon_iupac {
 
     foreach my $single_codon ( keys %$codons ) {
         my $aa_name_abri = $myCodonTable->translate($single_codon);
-        my $aa_name      = $Aminoacid{$aa_name_abri};
+        my $aa_name      = $AMINOACID{$aa_name_abri};
         $myCodons->{$single_codon} = {
             'frequency' => $codons->{$single_codon},
             'aa_name'   => $aa_name,
@@ -199,23 +268,19 @@ sub _calculate_rscu {
     my ( $rscu, @myCodons, %rscu_max_table );
 
     foreach my $each_codon ( keys %$codons ) {
-        my $amino       = $codons->{$each_codon}->{'aa_name'};
-        my $freq        = $codons->{$each_codon}->{'frequency'};
-        my $count       = 0;
+        my $amino = $codons->{$each_codon}->{'aa_name'};
+        my $freq  = $codons->{$each_codon}->{'frequency'};
+        my $count;
         my $all_freq_aa = 0;
         if ($amino) {
             foreach my $goforall ( keys %$codons ) {
-                if (   $amino
-                    && ( $codons->{$goforall}->{'aa_name'} eq $amino )
-                    && $each_codon ne $goforall )
+                if ( $amino && ( $codons->{$goforall}->{'aa_name'} eq $amino ) )
                 {
                     $all_freq_aa += $codons->{$goforall}->{'frequency'};
                     $count++;
                 }
             }
-            my $xij = $count > 0 ? ( 1 / $count ) : 0;
-            my $signma = ( $xij * $all_freq_aa );
-            $rscu = $signma ? $freq / $signma : 1;
+            $rscu = $all_freq_aa > 0 ? $count * $freq / $all_freq_aa : 0.00;
         }
         if ( !defined( $rscu_max_table{$amino} )
             || ( $rscu_max_table{$amino} < $rscu ) )
@@ -248,21 +313,34 @@ sub _calculate_rac {
         my $rscu  = $each_codon->{'rscu'};
         if ($amino) {
             my $max = $max_rscu->{$amino};
-            $rac = $rscu / $max;
+            $rac = $max > 0 ? $rscu / $max : 0.00;
             push @myCodons,
               {
                 'codon'     => $each_codon->{'codon'},
                 'frequency' => $each_codon->{'frequency'},
                 'aa_name'   => $amino,
-                'rscu'      => sprintf( "%.5f", $rscu ),
-                'rac'       => sprintf( "%.5f", $rac ),
+                'rscu'      => sprintf( "%.2f", $rscu ),
+                'rac'       => sprintf( "%.2f", $rac ),
               };
         }
     }
-
-# A CAI of 1.0 is considered to be perfect in the desired expression organism, and a
-# CAI of >0.9 is regarded as very good, in terms of high gene expression level.
     return ( \@myCodons );
+}
+
+# The CAI index is defined as the geometric mean of these relative adaptiveness values.
+sub calculate_cai {
+    my ( $self, $rscu_rac ) = @_;
+
+    my $count;
+    my $w;
+    foreach my $codon (@$rscu_rac) {
+        $w += $codon->{rac};
+        $count++;
+    }
+    my $cai = $w * ( 1 / $count );
+# A CAI of 1.0 is considered to be perfect in the desired expression organism, and a
+# CAI of >0.9 is regarded as very good, in terms of high gene expression level.	
+    return sprintf( "%.2f", $cai );
 }
 
 sub prefered_codon {
@@ -355,7 +433,7 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage!
 
 =head1 VERSION
 
-Version 1.00
+Version 1.01
 
 =head1 SYNOPSIS
 
@@ -406,6 +484,10 @@ Version 1.00
     
     $seqobj->generate_graph($myCodons,"myoutput.gif");
 
+    B<# To Calculate Codon Adaptation Index (CAI)>
+  
+    my $gene_cai = $seqobj->calculate_cai($myCodons);
+
 =head1 DESCRIPTION
 
 The purpose of this module is to show codon usage.
@@ -443,6 +525,10 @@ Return you prefered codons list.
 =item generate_graph($myCodons,"< output file >.gif")
 
 Produce a bar graph between RAC(Relative Adaptiveness of a Codon) & RSCU (Relative Synonymous Codons Uses).
+
+=item calculate_cai($myCodons)
+
+Calculate Codon Adaptation Index (CAI) for sequence.
 
 =back
 
