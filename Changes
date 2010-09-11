@@ -24,3 +24,6 @@ Revision history for Bio-Tools-CodonOptTable
 1.02	9th Sep 10
 		Added new method to generate HTML report of result
 		$seqobj->generate_report($outfile_name);
+1.03	11th Sep 10
+		CPAN test fail fixes and added html report sample output
+		

@@ -19,7 +19,8 @@ WriteMakefile(
         'Bio::DB::GenBank'       => 0,
         'GD::Graph::bars'        => 0,
         'Text::Textile'          => 0,
-        'File::Slurp'            => 0
+        'File::Slurp'            => 0,
+	'URI::Escape'		 => 0
     },
     dist  => { COMPRESS => 'gzip -9f', SUFFIX => 'gz', },
     clean => { FILES    => 'Bio-Tools-CodonOptTable-*' },

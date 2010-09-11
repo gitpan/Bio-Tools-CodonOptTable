@@ -14,7 +14,7 @@ use GD::Graph::bars;
 use Text::Textile qw(textile);
 use File::Slurp;
 
-our $VERSION = '1.02';
+our $VERSION = '1.03';
 
 use vars qw(@ISA %AMINOACID %GENETIC_CODE);
 
@@ -161,7 +161,8 @@ sub _build_codons {
     $self->{'codons'}         = $codons;
     $self->{'monomers_count'} = $seq_stats->count_monomers();
     $self->{'seq_mol_weight'} = $seq_stats->get_mol_wt();
-
+    delete $codons->{ambiguous} if($codons->{ambiguous});
+    
     return 1;
 }
 
@@ -512,7 +513,7 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage!
 
 =head1 VERSION
 
-Version 1.02
+Version 1.03
 
 =head1 SYNOPSIS
 
@@ -547,9 +548,8 @@ Version 1.02
             print "Codon      : ", $each_aa->{'codon'},     "\t";
             print "Frequency  : ", $each_aa->{'frequency'}, "\t";
             print "AminoAcid  : ", $each_aa->{'aa_name'},   "\t";
-            print "RSCU Value : ", $each_aa->{'rscu'},      "\t";    #Relative Synonymous Codons Uses
-            print "RAC Value  : ", $each_aa->{'rac'},       "\t";    #Relative Adaptiveness of a Codon
-            print "\n";
+            print "RSCU Value : ", $each_aa->{'rscu'},      "\t";       #Relative Synonymous Codons Uses
+            print "RAC Value  : ", $each_aa->{'rac'},       "\t \n";    #Relative Adaptiveness of a Codon
         }
     }
     
@@ -615,6 +615,7 @@ Calculate Codon Adaptation Index (CAI) for sequence.
 =item generate_report($outfile_name);
 
 To Produce HTML report, this function will generate HTML report, outfile extension should be .html
+example output : L<http://search.cpan.org/src/SHARDIWAL/Bio-Tools-CodonOptTable-1.03/result.html>
 
 =back
 
