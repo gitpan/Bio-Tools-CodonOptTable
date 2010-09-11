@@ -26,4 +26,6 @@ Revision history for Bio-Tools-CodonOptTable
 		$seqobj->generate_report($outfile_name);
 1.03	11th Sep 10
 		CPAN test fail fixes and added html report sample output
+1.04 	11th Sep 10
+		Fixed broken url in pod
 		

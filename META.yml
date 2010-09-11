@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Bio-Tools-CodonOptTable
-version:            1.03
+version:            1.04
 abstract:           A more elaborative way to check the codons usage!
 author:
     - Rakesh Kumar Shardiwal <rakesh.shardiwal@gmail.com>

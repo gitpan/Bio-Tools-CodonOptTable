@@ -1,6 +1,7 @@
 Changes
 MANIFEST
 Makefile.PL
+result.html
 README
 lib/Bio/Tools/CodonOptTable.pm
 t/00-load.t
