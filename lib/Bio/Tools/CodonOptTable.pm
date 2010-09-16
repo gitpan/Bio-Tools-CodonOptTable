@@ -14,7 +14,7 @@ use GD::Graph::bars;
 use Text::Textile qw(textile);
 use File::Slurp;
 
-our $VERSION = '1.04';
+our $VERSION = '1.05';
 
 use vars qw(@ISA %AMINOACID %GENETIC_CODE);
 
@@ -495,7 +495,7 @@ $rac_uses
 
 $mono_mers
 
-"Source code":http://search.cpan.org/~shardiwal/Bio-Tools-CodonOptTable-1.01/lib/Bio/Tools/CodonOptTable.pm is available.
+"Source code":http://search.cpan.org/~shardiwal/Bio-Tools-CodonOptTable-$VERSION/lib/Bio/Tools/CodonOptTable.pm is available.
 
 EOT
 
@@ -513,7 +513,7 @@ Bio::Tools::CodonOptTable - A more elaborative way to check the codons usage!
 
 =head1 VERSION
 
-Version 1.04
+Version 1.05
 
 =head1 SYNOPSIS
 
@@ -615,7 +615,7 @@ Calculate Codon Adaptation Index (CAI) for sequence.
 =item generate_report($outfile_name);
 
 To Produce HTML report, this function will generate HTML report, outfile extension should be .html
-example output : L<http://search.cpan.org/src/SHARDIWAL/Bio-Tools-CodonOptTable-1.04/result.html>
+example output : L<http://search.cpan.org/src/SHARDIWAL/Bio-Tools-CodonOptTable-1.05/result.html>
 
 =back
 

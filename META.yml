@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Bio-Tools-CodonOptTable
-version:            1.04
+version:            1.05
 abstract:           A more elaborative way to check the codons usage!
 author:
     - Rakesh Kumar Shardiwal <rakesh.shardiwal@gmail.com>
@@ -20,6 +20,7 @@ requires:
     Data::Dumper:         0
     File::Slurp:          0
     GD::Graph::bars:      0
+    LWP::UserAgent:       0
     Test::More:           0
     Text::Textile:        0
     URI::Escape:          0

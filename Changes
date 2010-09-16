@@ -28,4 +28,6 @@ Revision history for Bio-Tools-CodonOptTable
 		CPAN test fail fixes and added html report sample output
 1.04 	11th Sep 10
 		Fixed broken url in pod
+1.05 	16th Sep 10
+		'LWP::UserAgent'	=> '0' added in make file to avoid test fail
 		
